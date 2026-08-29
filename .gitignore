@@ -31,3 +31,6 @@ web/dist/
 .idea/
 *.swp
 .DS_Store
+
+# Go 依赖由 go.sum + flake vendorHash 锁定，不落盘入库（D-034/D-035）
+/vendor/

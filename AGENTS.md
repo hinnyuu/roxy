@@ -39,7 +39,7 @@ roxy 是面向 Jellyfin/Emby/Kodi 的动漫媒体库整理器：LLM 智能识别
 nix develop                    # 进入开发环境（一切开发操作的入口）
 go build ./...                 # 编译检查
 go test ./...                  # 单元测试 + golden 测试
-go vet ./... && gofmt -l .     # 静态检查（gofmt 输出必须为空）
+go vet ./... && gofmt -l cmd internal   # 静态检查（gofmt 输出必须为空；不检查 vendor/）
 nix build                      # 生产二进制冒烟测试：./result/bin/roxy --help
 nix build .#image              # OCI 镜像（dockerTools，无需 daemon）
 

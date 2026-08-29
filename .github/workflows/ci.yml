@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Build binary
+        run: nix build .#default
+      - name: Vet / gofmt / tests
+        run: nix develop --command bash -lc 'go vet ./... && test -z "$(gofmt -l cmd internal)" && go test ./...'
+      - name: Smoke test
+        run: ./result/bin/roxy version
+
+  image:
+    needs: check
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Build OCI image (dockerTools, single build definition)
+        run: nix build .#image
+      - name: Push to ghcr.io
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=dev
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME#v}"
+          fi
+          nix run nixpkgs#skopeo -- login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin <<< "${GITHUB_TOKEN}"
+          nix run nixpkgs#skopeo -- copy docker-archive:./result "docker://ghcr.io/hinnyuu/roxy:${TAG}"
+          echo "pushed ghcr.io/hinnyuu/roxy:${TAG}"

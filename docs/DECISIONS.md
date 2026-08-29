@@ -286,3 +286,35 @@
   已列入 .gitignore；任何情况下不得 `git add -f`。
 - 理由：测试拓扑（podman 挂载）与仓库同址最方便；媒体文件体积决定必须
   与 git 隔离。
+
+## D-034 Go 依赖选型与 vendor 入库
+
+- 状态：accepted（M0 落地）；**vendor 入库部分被 D-035 取代**
+- 决策：外部依赖最小化，仅三个：
+  - `modernc.org/sqlite`——纯 Go SQLite 驱动，无 CGO，保证静态单二进制与
+    极简镜像；
+  - `gopkg.in/yaml.v3`——配置文件解析；
+  - `golang.org/x/crypto/bcrypt`——密码哈希。
+  其余一律标准库（net/http 路由、log/slog、embed、crypto/rand）。
+  迁移框架自研（约 50 行：embed SQL + schema_migrations 表），不引入
+  goose/atlas。执行 `go mod vendor`，**vendor/ 提交入库**；
+  flake.nix 的 buildGoModule 以 `vendorHash = null` 直接消费 vendor。
+- 理由：Go 标准库优先（AGENTS.md）；纯 Go 驱动避免 CGO 的交叉编译与
+  基础镜像问题；vendor 入库保证离线构建与字节级可复现，与 flake.lock
+  的锁定目标一致。代价是仓库体积增大（数十 MB 量级），可接受。
+- 备选（拒绝）：mattn/go-sqlite3（CGO）；viper（过重）；
+  现成迁移框架（收益不抵依赖成本）。
+
+## D-035 vendorHash 模式取代 vendor 入库
+
+- 状态：accepted（M0 落地，取代 D-034 的"vendor 入库"部分；D-034 的依赖选型
+  仍然有效）
+- 背景：M0 实测 `go mod vendor` 产物达 **140MB**（modernc.org/sqlite 及其
+  传递依赖），远超 D-034 预估的"数十 MB"。
+- 决策：不提交 vendor/（列入 .gitignore）；flake.nix 的 buildGoModule 改用
+  `vendorHash` 锁定依赖（go.sum 锁版本，vendorHash 锁内容哈希），构建时由
+  Nix 固定输出派生拉取模块。开发态 vendor/ 仍可本地生成供离线测试
+  （Go 检测到 vendor/ 自动启用），但不入库。
+- 理由：仓库体积与 clone/CI 成本不可接受；可复现性由 flake.lock + go.sum +
+  vendorHash 三者共同保证，与 vendor 入库等价；构建需网络拉取模块，
+  与拉取 nixpkgs 的前提一致，无额外约束。
