@@ -8,10 +8,12 @@
 
 ## 当前进度（项目状态单一事实源，随里程碑实时更新）
 
-- **当前阶段：M0 代码完成，本地验收通过**（`go test`/`go vet`/`gofmt` 全绿，
-  `nix build .#default` 与 `.#image` 成功，迁移幂等测试通过）。
-  待推送 → CI 首跑 → 宿主机 `podman pull ghcr.io/hinnyuu/roxy:dev` 验收。
-- 下一步动作：M0 验收通过后启动 M1（兼容性测试桩）。
+- **M0：验收通过**（2026-08-29：宿主机 `podman pull ghcr.io/hinnyuu/roxy:dev`
+  + `roxy version` 输出 `roxy 0.0.0-dev`，用户确认）。
+- **当前阶段：M1 交付物就绪，待宿主机实测**——假库生成器 `bin/fixturegen`
+  （含单测）与 `docs/testing/m1.md` 检查单已交付。
+- 下一步动作：用户执行 `docs/testing/m1.md` → 回填结果 → 冻结命名规范
+  （更新 ARCHITECTURE.md §4 / RESEARCH.md §7，必要时追加 ADR）。
 - README.md 的"项目状态"节指向本节；禁止在其他位置重复维护进度。
 
 ---
