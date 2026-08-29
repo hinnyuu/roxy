@@ -1,0 +1,33 @@
+# 测试共享目录（含大量真实媒体文件，严禁入库）
+/test_share/
+
+# 运行时状态（SQLite 数据库、缓存、下载的图片等），由 DATA_DIR 控制，默认 ./data
+/data/
+*.db
+*.db-wal
+*.db-shm
+
+# 机密与本地覆盖配置（机密一律走环境变量，不落盘进仓库）
+.env
+.env.*
+config.local.yaml
+
+# Go 构建产物
+/bin/
+*.exe
+*.test
+
+# Nix 构建产物
+result
+result-*
+.direnv/
+
+# 前端
+web/node_modules/
+web/dist/
+
+# 编辑器与操作系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
