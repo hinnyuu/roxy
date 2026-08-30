@@ -1,3 +1,4 @@
 {"subject_id":12345,"relation_type":"Sequel","related_subject_id":222,"order":1}
 {"subject_id":999,"relation_type":3,"related_subject_id":12345,"order":2}
 {"subject_id":888,"relation_type":"Adaptation","related_subject_id":777,"order":3}
+{"subject_id":5001,"relation_type":"Version","related_subject_id":5002,"order":1}

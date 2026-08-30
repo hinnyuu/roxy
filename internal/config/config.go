@@ -41,6 +41,7 @@ type PolicyConfig struct {
 	NCOPNCED             string  `yaml:"ncop_nced"`
 	PVCM                 string  `yaml:"pv_cm"`
 	MultiVersion         string  `yaml:"multi_version"`
+	SeriesFirstConfirm   bool    `yaml:"series_first_confirm"`
 	AutoApproveThreshold float64 `yaml:"auto_approve_threshold"`
 }
 
@@ -121,6 +122,7 @@ func Default() *Config {
 			NCOPNCED:             "s00",
 			PVCM:                 "extras",
 			MultiVersion:         "vault",
+			SeriesFirstConfirm:   true,
 			AutoApproveThreshold: 0.90,
 		},
 		Metadata: MetadataConfig{
@@ -183,6 +185,14 @@ func envFloat(key string, dst *float64) {
 	}
 }
 
+func envBool(key string, dst *bool) {
+	if v, ok := os.LookupEnv(key); ok && v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			*dst = b
+		}
+	}
+}
+
 func (c *Config) applyEnv() {
 	envStr("ROXY_SERVER_HOST", &c.Server.Host)
 	envInt("ROXY_SERVER_PORT", &c.Server.Port)
@@ -192,6 +202,7 @@ func (c *Config) applyEnv() {
 	envStr("ROXY_MEDIA_LINK_MODE", &c.Media.LinkMode)
 	envFloat("ROXY_POLICY_AUTO_APPROVE_THRESHOLD", &c.Policy.AutoApproveThreshold)
 	envStr("ROXY_POLICY_MULTI_VERSION", &c.Policy.MultiVersion)
+	envBool("ROXY_POLICY_SERIES_FIRST_CONFIRM", &c.Policy.SeriesFirstConfirm)
 	envInt("ROXY_SCANNER_RESCAN_INTERVAL", &c.Scanner.RescanInterval)
 }
 

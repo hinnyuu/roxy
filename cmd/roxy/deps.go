@@ -36,7 +36,7 @@ func buildDeps(ctx context.Context, cfg *config.Config, database *sql.DB) (api.D
 	}
 
 	mp := matcher.New(database, parser.New(nil), idx, client, cache,
-		cfg.Policy.AutoApproveThreshold, cfg.Policy.MultiVersion)
+		cfg.Policy.AutoApproveThreshold, cfg.Policy.MultiVersion, cfg.Policy.SeriesFirstConfirm)
 	sc := scanner.NewScanner(store)
 	runner := task.NewRunner(database)
 

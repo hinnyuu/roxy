@@ -92,7 +92,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	store := scanner.NewStore(database)
 	idx := metadata.NewIndex(database)
 	importer := metadata.NewImporter(database, cfg.DataDir, "test-agent")
-	mp := matcher.New(database, parser.New(nil), idx, nil, metadata.NewCache(database), 0.90, "vault")
+	mp := matcher.New(database, parser.New(nil), idx, nil, metadata.NewCache(database), 0.90, "vault", false)
 	sc := scanner.NewScanner(store)
 	runner := task.NewRunner(database)
 	runner.Register("scan", func(ctx context.Context, payload string, report task.Report) error {
@@ -200,7 +200,7 @@ func TestFullPipeline(t *testing.T) {
 	_, body = e.do(t, "GET", "/api/index", nil)
 	st = map[string]any{}
 	json.Unmarshal(body, &st)
-	if st["dump_version"] != "dump.zip" || st["subjects"].(float64) != 3 {
+	if st["dump_version"] != "dump.zip" || st["subjects"].(float64) != 5 {
 		t.Fatalf("index status: %s", body)
 	}
 

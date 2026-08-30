@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hinnyuu/roxy/internal/db"
@@ -19,6 +20,10 @@ import (
 )
 
 func setup(t *testing.T, client *metadata.Client) (*sql.DB, *scanner.Scanner, *Matcher, *scanner.Store, string) {
+	return setupWith(t, client, false)
+}
+
+func setupWith(t *testing.T, client *metadata.Client, firstConfirm bool) (*sql.DB, *scanner.Scanner, *Matcher, *scanner.Store, string) {
 	t.Helper()
 	d, err := db.Open(filepath.Join(t.TempDir(), "m.db"))
 	if err != nil {
@@ -58,7 +63,7 @@ func setup(t *testing.T, client *metadata.Client) (*sql.DB, *scanner.Scanner, *M
 	if err := store.CreateSource(context.Background(), src); err != nil {
 		t.Fatal(err)
 	}
-	m := New(d, parser.New(nil), metadata.NewIndex(d), client, metadata.NewCache(d), 0.90, "vault")
+	m := New(d, parser.New(nil), metadata.NewIndex(d), client, metadata.NewCache(d), 0.90, "vault", firstConfirm)
 	return d, scanner.NewScanner(store), m, store, dir
 }
 
@@ -301,6 +306,89 @@ func TestMapPlatform(t *testing.T) {
 		if typ != c.typ || kind != c.kind {
 			t.Errorf("mapPlatform(%q) = %s/%s, want %s/%s", c.in, typ, kind, c.typ, c.kind)
 		}
+	}
+}
+
+func TestSameNameCollisionGoesToReview(t *testing.T) {
+	ctx := context.Background()
+	d, sc, m, _, dir := setup(t, nil)
+	touch(t, dir, "[SubT] 测试重制 [01][1080p].mkv")
+	if _, err := sc.ScanSource(ctx, domain.Source{ID: 1, Path: dir, ProviderType: "dirscan"}, m.ProcessEvent); err != nil {
+		t.Fatal(err)
+	}
+	ps := placements(t, d)
+	if len(ps) != 1 || ps[0].reviewState != domain.PlacementPendingReview {
+		t.Fatalf("collision must go to review: %+v", ps)
+	}
+	if ps[0].confidence >= 0.90 {
+		t.Errorf("collision confidence = %.2f, want < 0.90", ps[0].confidence)
+	}
+	var reason string
+	d.QueryRow(`SELECT reason FROM review_cases LIMIT 1`).Scan(&reason)
+	if !strings.Contains(reason, "同名") {
+		t.Errorf("reason = %q, want 同名多候选", reason)
+	}
+}
+
+func TestSameNameYearDisambiguates(t *testing.T) {
+	ctx := context.Background()
+	d, sc, m, _, dir := setup(t, nil)
+	touch(t, dir, "[SubT] 测试重制 (2019) [01][1080p].mkv")
+	if _, err := sc.ScanSource(ctx, domain.Source{ID: 1, Path: dir, ProviderType: "dirscan"}, m.ProcessEvent); err != nil {
+		t.Fatal(err)
+	}
+	ps := placements(t, d)
+	if len(ps) != 1 || ps[0].reviewState != domain.PlacementAutoApproved {
+		t.Fatalf("year-disambiguated match should auto-approve: %+v", ps)
+	}
+	var bgm sql.NullInt64
+	d.QueryRow(`SELECT bgm_subject_id FROM series`).Scan(&bgm)
+	if bgm.Int64 != 5002 {
+		t.Errorf("series bgm = %v, want 5002（2019 版）", bgm)
+	}
+}
+
+func TestSeriesFirstConfirm(t *testing.T) {
+	ctx := context.Background()
+	d, sc, m, _, dir := setupWith(t, nil, true)
+	touch(t, dir, "[SubA] Re:Zero [01][1080p].mkv")
+	if _, err := sc.ScanSource(ctx, domain.Source{ID: 1, Path: dir, ProviderType: "dirscan"}, m.ProcessEvent); err != nil {
+		t.Fatal(err)
+	}
+	ps := placements(t, d)
+	if len(ps) != 1 || ps[0].reviewState != domain.PlacementPendingReview {
+		t.Fatalf("first placement of a series must be pending: %+v", ps)
+	}
+	var reason string
+	d.QueryRow(`SELECT reason FROM review_cases LIMIT 1`).Scan(&reason)
+	if !strings.Contains(reason, "首次确认") {
+		t.Errorf("reason = %q", reason)
+	}
+
+	// 人工确认（模拟批准）后，同系列第二个文件恢复自动放行（新库首个 placement id=1）
+	if _, err := d.Exec(`UPDATE placements SET review_state = 'approved' WHERE id = 1`); err != nil {
+		t.Fatal(err)
+	}
+	touch(t, dir, "[SubA] Re:Zero [02][1080p].mkv")
+	if _, err := sc.ScanSource(ctx, domain.Source{ID: 1, Path: dir, ProviderType: "dirscan"}, m.ProcessEvent); err != nil {
+		t.Fatal(err)
+	}
+	ps = placements(t, d)
+	if len(ps) != 2 || ps[1].reviewState != domain.PlacementAutoApproved {
+		t.Fatalf("second placement after confirmation must auto-approve: %+v", ps)
+	}
+}
+
+func TestSeriesFirstConfirmDisabledKeepsAuto(t *testing.T) {
+	ctx := context.Background()
+	d, sc, m, _, dir := setup(t, nil) // firstConfirm=false
+	touch(t, dir, "[SubA] Re:Zero [01][1080p].mkv")
+	if _, err := sc.ScanSource(ctx, domain.Source{ID: 1, Path: dir, ProviderType: "dirscan"}, m.ProcessEvent); err != nil {
+		t.Fatal(err)
+	}
+	ps := placements(t, d)
+	if len(ps) != 1 || ps[0].reviewState != domain.PlacementAutoApproved {
+		t.Fatalf("with firstConfirm off, E01 must auto-approve: %+v", ps)
 	}
 }
 

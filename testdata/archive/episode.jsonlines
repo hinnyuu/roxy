@@ -4,3 +4,5 @@
 {"id":1004,"subject_id":12345,"name":"OP","name_cn":"","sort":0,"type":2}
 {"id":2001,"subject_id":999,"name":"Book chapter","sort":1,"type":0}
 {"id":3001,"subject_id":222,"name":"Movie","sort":1,"type":0,"airdate":"2020-08-15"}
+{"id":5101,"subject_id":5001,"name":"Episode 1","name_cn":"第1话","sort":1,"type":0,"airdate":"2001-01-01"}
+{"id":5201,"subject_id":5002,"name":"Episode 1","name_cn":"第1话","sort":1,"type":0,"airdate":"2019-04-06"}

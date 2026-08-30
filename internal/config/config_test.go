@@ -23,6 +23,9 @@ func TestDefaults(t *testing.T) {
 	if cfg.Policy.MultiVersion != "vault" {
 		t.Errorf("default multi_version = %q, want vault", cfg.Policy.MultiVersion)
 	}
+	if !cfg.Policy.SeriesFirstConfirm {
+		t.Error("default series_first_confirm must be true (D-043)")
+	}
 	if cfg.Metadata.Bangumi.UserAgent == "" {
 		t.Error("bangumi user_agent must not be empty")
 	}
@@ -50,6 +53,7 @@ func TestEnvOverride(t *testing.T) {
 	t.Setenv("ROXY_SERVER_PORT", "7777")
 	t.Setenv("ROXY_DATA_DIR", "/tmp/roxy-data")
 	t.Setenv("ROXY_POLICY_AUTO_APPROVE_THRESHOLD", "0.85")
+	t.Setenv("ROXY_POLICY_SERIES_FIRST_CONFIRM", "false")
 	cfg, err := Load("")
 	if err != nil {
 		t.Fatalf("load: %v", err)
@@ -62,6 +66,9 @@ func TestEnvOverride(t *testing.T) {
 	}
 	if cfg.Policy.AutoApproveThreshold != 0.85 {
 		t.Errorf("threshold = %v, want 0.85", cfg.Policy.AutoApproveThreshold)
+	}
+	if cfg.Policy.SeriesFirstConfirm {
+		t.Error("env must override series_first_confirm to false")
 	}
 }
 

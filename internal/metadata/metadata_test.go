@@ -82,7 +82,7 @@ func TestImportLocalZip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.Subjects != 3 || stats.Episodes != 5 || stats.Relations != 2 {
+	if stats.Subjects != 5 || stats.Episodes != 7 || stats.Relations != 3 {
 		t.Fatalf("stats = %+v", stats)
 	}
 	if len(progress) == 0 {
@@ -96,7 +96,7 @@ func TestImportLocalZip(t *testing.T) {
 	if st.Version != "dump-test.zip" || !strings.HasPrefix(st.SourceURL, "local:") || st.ImportedAt == "" {
 		t.Fatalf("status = %+v", st)
 	}
-	if st.Subjects != 3 || st.Episodes != 5 || st.Relations != 2 {
+	if st.Subjects != 5 || st.Episodes != 7 || st.Relations != 3 {
 		t.Fatalf("status counts = %+v", st)
 	}
 
@@ -154,7 +154,7 @@ func TestImportLocalZip(t *testing.T) {
 	}
 	var n int
 	d.QueryRow(`SELECT COUNT(*) FROM bgm_subjects`).Scan(&n)
-	if n != 3 {
+	if n != 5 {
 		t.Fatalf("reimport subjects = %d", n)
 	}
 	// FTS 触发器与 rebuild 一致性：重放后仍可检索
