@@ -322,11 +322,17 @@ mapping: [{file, season, episode, slot_type(tv|special|movie|op|ed|pv|cm|extra),
 ### 8.3 本地 Bangumi 索引（Archive dump）
 
 - 来源：`github.com/bangumi/Archive` releases（tag `archive`），
-  最新地址经 `aux/latest.json` 解析；每周三 05:00 (GMT+8) 更新。
+  最新地址经 `aux/latest.json` 解析（含 sha256 digest 可校验）；
+  每周三 05:00 (GMT+8) 更新。
+- 载体格式（2026-08-30 核验，详见 RESEARCH.md §2）：单一 zip（约 435MB）内含
+  9 个 JSONL；导入为流式两趟：先 `subject.jsonlines` 过滤 type=2 建动画 ID 集，
+  再按集过滤 `episode` / `subject-relations`。
 - 导入范围：动画条目（type=2）+ 章节 + 条目关联；进 `bgm_subjects /
-  bgm_episodes / bgm_relations` 表 + FTS5。
-- 刷新：`index_refresh` 任务，默认每周自动（可关）；磁盘预算约 1–2GB
-  （宿主机 3TB SSD，无压力；实际体积 M2 验证）。
+  bgm_episodes / bgm_relations` 表 + FTS5（导入事务内摘除/重建 FTS 触发器，
+  批量插入后 `rebuild`，避免百万行逐行触发）。
+- 刷新：`index_refresh` 任务，默认每周自动（可关）；检索为 unicode61 分词，
+  中文走前缀查询 + LIKE 兜底两级（trigram 为后备升级路径）；实测（M2）：
+  全量导入约 71s、索引约 50–70MB（见 RESEARCH.md §2）。
 - infobox 原始 wiki 字符串暂不解析（需要时用官方 `bangumi/wiki-parser-go`）。
 
 ## 9. 版本模型与字幕配对
@@ -503,6 +509,7 @@ CREATE TABLE placements (
                                                 'pv','cm','extra','subtitle','ignored')),
   season                   INTEGER,
   episode                  REAL,                   -- REAL 容纳 12.5
+  episode_end              REAL,                   -- 多集合一文件的结束集（迁移 0003，D-036 S01E01E02）
   episode_title            TEXT,
   version_key              TEXT,                   -- 归一化原始中括号
   version_label            TEXT,                   -- LLM/人工标注的显示标签
@@ -730,6 +737,11 @@ scanner:
   GET|POST   /api/sources              列表/新增
   PUT|DELETE /api/sources/{id}         修改/删除
   POST       /api/sources/{id}/scan    手动触发扫描
+  GET        /api/sources/{id}/files   文件清单（含解析结果；M2 增补，验收项"解析结果展示"）
+
+索引（M2 增补，D-022 的运维入口）
+  GET  /api/index                      本地 Bangumi 索引状态（dump 版本/导入时间/条目计数/进行中任务）
+  POST /api/index/refresh              触发导入/刷新；body 可选 {local_path}（缺省应用内下载）
 
 审核队列
   GET  /api/review?state=…             工单列表

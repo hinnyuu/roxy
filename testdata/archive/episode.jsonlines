@@ -1,0 +1,6 @@
+{"id":1001,"subject_id":12345,"name":"Episode 1","name_cn":"第1话","sort":1,"type":0,"airdate":"2016-04-03","disc":1,"duration":"25m"}
+{"id":1002,"subject_id":12345,"name":"Episode 2","name_cn":"第2话","sort":2,"type":0,"airdate":"2016-04-10","disc":1}
+{"id":1003,"subject_id":12345,"name":"Special","name_cn":"","sort":13,"type":1,"airdate":"2016-09-01"}
+{"id":1004,"subject_id":12345,"name":"OP","name_cn":"","sort":0,"type":2}
+{"id":2001,"subject_id":999,"name":"Book chapter","sort":1,"type":0}
+{"id":3001,"subject_id":222,"name":"Movie","sort":1,"type":0,"airdate":"2020-08-15"}

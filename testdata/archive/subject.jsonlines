@@ -1,0 +1,4 @@
+{"id":12345,"type":2,"name":"Re:Zero","name_cn":"Re：从零开始的异世界生活","infobox":"{{Infobox animanga|...}}","platform":"TV","date":"2016-04-03","score":8.2,"rank":100,"nsfw":false,"summary":"一个宅男被召唤到异世界","tags":[{"name":"异世界","count":100}],"meta_tags":["异世界"]}
+{"id":999,"type":1,"name":"Berserk","name_cn":"剑风传奇","platform":"漫画","date":"1989","nsfw":false,"summary":"漫画条目应被过滤"}
+{"id":222,"type":2,"name":"Movie X","name_cn":"剧场版X","platform":"剧场版","date":"2020-08-15","score":7.5,"rank":50,"nsfw":false,"summary":"剧场版"}
+{"id":333,"type":2,"name":"NSFW Show","name_cn":"成人向作品","platform":"WEB","date":"2019","nsfw":true,"summary":"NSFW 不进候选"}

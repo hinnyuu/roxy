@@ -2,7 +2,9 @@
 
 部署产物目录。
 
-- `podman/`：开发测试用一键起/拆脚本（`test-up.sh` / `test-down.sh`），M2 交付。
+- `podman/`：开发测试用一键起/拆脚本（`test-up.sh` / `test-down.sh`，M2 已交付）。
+  默认仅起 roxy（`--image` 换镜像、`--port` 换端口、`--selinux` 加 `:z`、
+  `--with-jellyfin/--with-emby` 为 M4 端到端预留）。
 - `quadlet/`：podman 常驻部署模板，M6 交付。
 - `compose/`：docker compose 模板，M6 交付。
 

@@ -25,7 +25,7 @@ func TestMigrateIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("applied migrations: %v", err)
 	}
-	want := []string{"0001_initial.sql", "0002_add_vault_flag.sql"}
+	want := []string{"0001_initial.sql", "0002_add_vault_flag.sql", "0003_add_episode_end.sql"}
 	if len(applied) != len(want) {
 		t.Fatalf("applied migrations = %v, want %v", applied, want)
 	}
@@ -36,7 +36,7 @@ func TestMigrateIdempotent(t *testing.T) {
 	}
 }
 
-func TestVaultColumnPresent(t *testing.T) {
+func TestPlacementExtensionColumns(t *testing.T) {
 	ctx := context.Background()
 	d, err := Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -49,12 +49,12 @@ func TestVaultColumnPresent(t *testing.T) {
 
 	var n int
 	err = d.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM pragma_table_info('placements') WHERE name='vault'`).Scan(&n)
+		`SELECT COUNT(*) FROM pragma_table_info('placements') WHERE name IN ('vault','episode_end')`).Scan(&n)
 	if err != nil {
 		t.Fatalf("pragma_table_info: %v", err)
 	}
-	if n != 1 {
-		t.Error("placements.vault column missing (migration 0002)")
+	if n != 2 {
+		t.Error("placements.vault / episode_end columns missing (migrations 0002/0003)")
 	}
 }
 
@@ -112,5 +112,21 @@ func TestFTSIndexWorks(t *testing.T) {
 	}
 	if id != 1 {
 		t.Fatalf("expected fts hit on subject 1, got %d", id)
+	}
+
+	// 中文前缀查询（matcher 检索第一级，见 ARCHITECTURE.md §8.3）：
+	// unicode61 下 CJK 整串为单 token，"无职*" 应命中 token "无职转生"。
+	if _, err := d.ExecContext(ctx,
+		`INSERT INTO bgm_subjects (id, type, name, name_cn) VALUES (2, 2, 'Re:Zero', 'Re：从零开始的异世界生活')`); err != nil {
+		t.Fatalf("insert subject 2: %v", err)
+	}
+	var pid int
+	err = d.QueryRowContext(ctx,
+		`SELECT rowid FROM bgm_subjects_fts WHERE bgm_subjects_fts MATCH ?`, "无职*").Scan(&pid)
+	if err != nil {
+		t.Fatalf("fts prefix match: %v", err)
+	}
+	if pid != 1 {
+		t.Fatalf("expected fts prefix hit on subject 1, got %d", pid)
 	}
 }
