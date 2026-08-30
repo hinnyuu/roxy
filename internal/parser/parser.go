@@ -71,7 +71,7 @@ func (p *Parser) Parse(name string) *domain.ParseResult {
 	if kind != KindVideo && kind != KindSubtitle {
 		return nil
 	}
-	base := toHalfWidth(strings.TrimSuffix(name, filepath.Ext(name)))
+	base := strings.TrimSuffix(name, filepath.Ext(name))
 
 	pr := &domain.ParseResult{EPTypeHint: domain.HintUnknown}
 

@@ -65,7 +65,8 @@
   共约 **71 秒**；入库动画条目 **30,745** / 章节 **343,294** / 关联 **138,820**；
   SQLite 索引仅约 **50–70MB**（远小于 1–2GB 预算）。检索质量抽检：多季前缀
   排名正确（无职转生五季、芙莉莲两期+衍生）、章节 ep_type 分布正确（含 OP/ED/
-  特别篇）。
+  特别篇）。宿主机（podman 镜像）复测印证：下载约 1 分钟、导入 <2 分钟、
+  卷体积 72.87MB、计数一致（见 docs/testing/m2.md §dump 实测）。
 - 常量对应关系（relation/platform/staff）：`github.com/bangumi/common`（yaml）。
   **dump 中 platform 与 relation_type 为数字码**（2026-08-30 真实 dump 核验；
   在线 API 的 platform 为字符串）：动画 platform 1=TV / 2=OVA / 3=剧场版 /
