@@ -242,17 +242,22 @@ func (m *Matcher) resolveSeries(ctx context.Context, pr *domain.ParseResult) (*s
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, 0, err
 		}
-		// c. FTS/LIKE 检索
+		// c. FTS/LIKE 检索（命中经 Go 侧归一化复核：全等 1.0 / 包含 0.8 / 弱匹配 0.7）
 		hits, err := m.index.Search(ctx, cand, 5)
 		if err != nil {
 			return nil, 0, err
 		}
 		if len(hits) > 0 {
-			score := 0.8
-			if len(hits) > 1 && domain.NormalizeTitle(hits[0].Name) != domain.NormalizeTitle(hits[1].Name) {
-				score = 0.7 // 多候选并列：降置信，倾向人工
-			}
 			h := hits[0]
+			hn1, hn2 := domain.NormalizeTitle(h.Name), domain.NormalizeTitle(h.NameCn)
+			score := 0.7
+			switch {
+			case norm == hn1 || norm == hn2:
+				score = 1.0
+			case hn1 != "" && (strings.Contains(hn1, norm) || strings.Contains(norm, hn1)),
+				hn2 != "" && (strings.Contains(hn2, norm) || strings.Contains(norm, hn2)):
+				score = 0.8
+			}
 			return &seriesCand{subjectID: h.ID, name: h.Name, nameCn: h.NameCn, platform: h.Platform, date: h.Date, titleScore: score}, score, nil
 		}
 	}
