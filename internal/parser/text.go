@@ -4,41 +4,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/hinnyuu/roxy/internal/domain"
 )
 
-// normalizeKey 归一化（D-012）：全角→半角、小写、折叠空白、修剪。
-// 仅用于 version_key / 别名比对，不改动展示文本。
-func normalizeKey(s string) string {
-	return strings.Join(strings.Fields(toHalfWidth(strings.ToLower(s))), " ")
-}
-
-var halfWidthReplacer = strings.NewReplacer(
-	"【", "[", "】", "]", "（", "(", "）", ")", "〔", "[", "〕", "]",
-	"「", "[", "」", "]",
-	"！", "!", "？", "?", "：", ":", "；", ";", "，", ",", "。", ".",
-	"＆", "&", "－", "-", "～", "~", "–", "-", "—", "-", "・", ".", "·", ".",
-	"　", " ",
-)
-
-const fullWidthDigits = "０１２３４５６７８９"
-const halfWidthDigits = "0123456789"
-
-// toHalfWidth 全角标点/数字转半角。
-func toHalfWidth(s string) string {
-	s = halfWidthReplacer.Replace(s)
-	return strings.Map(func(r rune) rune {
-		if i := strings.IndexRune(fullWidthDigits, r); i >= 0 {
-			return rune(halfWidthDigits[i])
-		}
-		if r >= 'Ａ' && r <= 'Ｚ' {
-			return r - 'Ａ' + 'A'
-		}
-		if r >= 'ａ' && r <= 'ｚ' {
-			return r - 'ａ' + 'a'
-		}
-		return r
-	}, s)
-}
+// 归一化原语下沉至 domain（parser/metadata/matcher 共用）。
+func normalizeKey(s string) string { return domain.NormalizeKey(s) }
+func toHalfWidth(s string) string  { return domain.ToHalfWidth(s) }
 
 var bracketRe = regexp.MustCompile(`\[([^\[\]]*)\]|\(([^()]*)\)|\{([^{}]*)\}`)
 
