@@ -100,9 +100,12 @@ func findYear(brackets []string) *int {
 var titleCleanupRe = regexp.MustCompile(`\s+`)
 
 // rawClean 保留原始字符的标题修剪：仅折叠空白并去首尾分隔符。
+// 全角 ～/〜 不修剪：动漫标题惯用「～标题～」成对装饰（如官方名
+// "无职转生～到了异世界就拿出真本事～"），它们几乎从不充当分隔符；
+// 匹配侧 NormalizeTitle 会统一去除，不受影响。
 func rawClean(s string) string {
 	s = titleCleanupRe.ReplaceAllString(s, " ")
-	return strings.Trim(s, " \t-~|_.～—–")
+	return strings.Trim(s, " \t-~|_.—–")
 }
 
 // cleanTitle 修剪标题残留：折叠空白、去首尾分隔符。
