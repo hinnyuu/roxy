@@ -32,7 +32,32 @@ const (
 	showB = "tv/Test Show Beta ~Special Edition~ (2023)"
 	showC = "tv/测试番剧Ω＆Δ (2025)"
 	movie = "movies/Test Movie 剧场版 (2025)"
+
+	probeShow = "tv/Probe Show (2024)"
 )
+
+// probeSpecs 是 M1.5 探针（D-038）：同一部番剧三集，各两个文件，
+// 测试 Jellyfin 剧集多版本合并的后缀形态变体。
+func probeSpecs() []fileSpec {
+	return []fileSpec{
+		{probeShow + "/tvshow.nfo", kindNFO, tvshowNFO("Probe Show", "プローブショー", 2024, 999005, 99005)},
+
+		// 变体 A：" - "分隔组名后缀
+		{probeShow + "/Season 01/S01E01 - 第01话 - AlphaSub.mkv", kindMedia, ""},
+		{probeShow + "/Season 01/S01E01 - 第01话 - BetaSub.mkv", kindMedia, ""},
+		{probeShow + "/Season 01/S01E01 - 第01话.nfo", kindNFO, episodeNFO("第01话", 1, 1, 999005001)},
+
+		// 变体 B：" - "分隔技术标签后缀
+		{probeShow + "/Season 01/S01E02 - 第02话 - 1080p.mkv", kindMedia, ""},
+		{probeShow + "/Season 01/S01E02 - 第02话 - 720p.mkv", kindMedia, ""},
+		{probeShow + "/Season 01/S01E02 - 第02话.nfo", kindNFO, episodeNFO("第02话", 1, 2, 999005002)},
+
+		// 对照：方括号组名后缀（M1 已证 Jellyfin 不合并）
+		{probeShow + "/Season 01/S01E03 - 第03话 [AlphaSub].mkv", kindMedia, ""},
+		{probeShow + "/Season 01/S01E03 - 第03话 [BetaSub].mkv", kindMedia, ""},
+		{probeShow + "/Season 01/S01E03 - 第03话.nfo", kindNFO, episodeNFO("第03话", 1, 3, 999005003)},
+	}
+}
 
 func specs() []fileSpec {
 	return []fileSpec{
@@ -180,12 +205,17 @@ func dummyJPEG() ([]byte, error) {
 }
 
 // Generate 在 root 下生成完整假库；重复执行幂等（覆盖写入）。
-func Generate(root string) error {
+// probe 为 true 时只生成 M1.5 探针库。
+func Generate(root string, probe bool) error {
+	list := specs()
+	if probe {
+		list = probeSpecs()
+	}
 	jpg, err := dummyJPEG()
 	if err != nil {
 		return fmt.Errorf("generate jpeg: %w", err)
 	}
-	for _, s := range specs() {
+	for _, s := range list {
 		path := filepath.Join(root, filepath.FromSlash(s.rel))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return fmt.Errorf("mkdir for %s: %w", s.rel, err)
@@ -210,10 +240,10 @@ func Generate(root string) error {
 	return nil
 }
 
-func printTree(root string) error {
+func printTree(root string, list []fileSpec) error {
 	seen := map[string]bool{}
 	var dirs []string
-	for _, s := range specs() {
+	for _, s := range list {
 		dir := filepath.Dir(s.rel)
 		for dir != "." && dir != "/" && !seen[dir] {
 			seen[dir] = true
@@ -222,7 +252,7 @@ func printTree(root string) error {
 		}
 	}
 	fmt.Printf("%s/\n", strings.TrimSuffix(root, "/"))
-	for _, s := range specs() {
+	for _, s := range list {
 		fmt.Printf("  %s\n", s.rel)
 	}
 	return nil

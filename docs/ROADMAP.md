@@ -8,12 +8,13 @@
 
 ## 当前进度（项目状态单一事实源，随里程碑实时更新）
 
-- **M0：验收通过**（2026-08-29：宿主机 `podman pull ghcr.io/hinnyuu/roxy:dev`
-  + `roxy version` 输出 `roxy 0.0.0-dev`，用户确认）。
-- **当前阶段：M1 交付物就绪，待宿主机实测**——假库生成器 `bin/fixturegen`
-  （含单测）与 `docs/testing/m1.md` 检查单已交付。
-- 下一步动作：用户执行 `docs/testing/m1.md` → 回填结果 → 冻结命名规范
-  （更新 ARCHITECTURE.md §4 / RESEARCH.md §7，必要时追加 ADR）。
+- **M0：验收通过**（2026-08-29）。
+- **M1：完成**（2026-08-30）——双服务器实测回填，命名规范主体冻结（D-036），
+  Emby `-trailer` 红线（D-037）；发现 Jellyfin 多版本不合并（D-038 立项）。
+- **当前阶段：M1.5 探针交付物就绪，待宿主机执行**——
+  `bin/fixturegen -probe` 与 `docs/testing/m1.5.md`（仅测 Jellyfin）。
+- 下一步动作：探针结果回填 → D-038 定稿（版本后缀形态或版本仓库策略）→
+  启动 M2（扫描 + 规则解析 + 本地索引）。
 - README.md 的"项目状态"节指向本节；禁止在其他位置重复维护进度。
 
 ---

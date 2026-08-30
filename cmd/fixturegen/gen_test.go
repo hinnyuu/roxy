@@ -10,7 +10,7 @@ import (
 
 func TestGenerateCreatesAllSpecs(t *testing.T) {
 	root := t.TempDir()
-	if err := Generate(root); err != nil {
+	if err := Generate(root, false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	for _, s := range specs() {
@@ -28,17 +28,17 @@ func TestGenerateCreatesAllSpecs(t *testing.T) {
 
 func TestGenerateIdempotent(t *testing.T) {
 	root := t.TempDir()
-	if err := Generate(root); err != nil {
+	if err := Generate(root, false); err != nil {
 		t.Fatalf("first generate: %v", err)
 	}
-	if err := Generate(root); err != nil {
+	if err := Generate(root, false); err != nil {
 		t.Fatalf("second generate: %v", err)
 	}
 }
 
 func TestNFOsAreWellFormedXML(t *testing.T) {
 	root := t.TempDir()
-	if err := Generate(root); err != nil {
+	if err := Generate(root, false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	for _, s := range specs() {
@@ -65,7 +65,7 @@ func TestNFOsAreWellFormedXML(t *testing.T) {
 
 func TestJPEGMagicBytes(t *testing.T) {
 	root := t.TempDir()
-	if err := Generate(root); err != nil {
+	if err := Generate(root, false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	for _, s := range specs() {
@@ -110,6 +110,40 @@ func TestKeyEdgeCasePathsPresent(t *testing.T) {
 	for _, r := range required {
 		if !paths[r] {
 			t.Errorf("required edge-case path missing from specs: %s", r)
+		}
+	}
+}
+
+func TestProbeGenerate(t *testing.T) {
+	root := t.TempDir()
+	if err := Generate(root, true); err != nil {
+		t.Fatalf("generate probe: %v", err)
+	}
+	list := probeSpecs()
+	if len(list) != 10 {
+		t.Errorf("probe specs = %d files, want 10", len(list))
+	}
+	for _, s := range list {
+		path := filepath.Join(root, filepath.FromSlash(s.rel))
+		if info, err := os.Stat(path); err != nil || info.Size() == 0 {
+			t.Errorf("probe file missing/empty %s: %v", s.rel, err)
+		}
+	}
+	required := []string{
+		probeShow + "/Season 01/S01E01 - 第01话 - AlphaSub.mkv",
+		probeShow + "/Season 01/S01E01 - 第01话 - BetaSub.mkv",
+		probeShow + "/Season 01/S01E02 - 第02话 - 1080p.mkv",
+		probeShow + "/Season 01/S01E02 - 第02话 - 720p.mkv",
+		probeShow + "/Season 01/S01E03 - 第03话 [AlphaSub].mkv",
+		probeShow + "/Season 01/S01E03 - 第03话 [BetaSub].mkv",
+	}
+	paths := map[string]bool{}
+	for _, s := range list {
+		paths[s.rel] = true
+	}
+	for _, r := range required {
+		if !paths[r] {
+			t.Errorf("probe variant missing: %s", r)
 		}
 	}
 }
