@@ -2,3 +2,5 @@
 {"id":999,"type":1,"name":"Berserk","name_cn":"剑风传奇","platform":"漫画","date":"1989","nsfw":false,"summary":"漫画条目应被过滤"}
 {"id":222,"type":2,"name":"Movie X","name_cn":"剧场版X","platform":"剧场版","date":"2020-08-15","score":7.5,"rank":50,"nsfw":false,"summary":"剧场版"}
 {"id":333,"type":2,"name":"NSFW Show","name_cn":"成人向作品","platform":"WEB","date":"2019","nsfw":true,"summary":"NSFW 不进候选"}
+{"id":5001,"type":2,"name":"Test Remake","name_cn":"测试重制","platform":"1","date":"2001-01-01","score":7.0,"rank":100,"nsfw":false,"summary":"旧版"}
+{"id":5002,"type":2,"name":"Test Remake","name_cn":"测试重制","platform":"1","date":"2019-04-06","score":8.0,"rank":50,"nsfw":false,"summary":"新版"}

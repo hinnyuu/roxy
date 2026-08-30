@@ -28,11 +28,12 @@ type Matcher struct {
 	cache     *metadata.Cache
 	threshold float64
 	multiVer  string // vault | tolerate
+	firstConf bool   // 系列首确认（D-043）
 }
 
-func New(db *sql.DB, p *parser.Parser, idx *metadata.Index, client *metadata.Client, cache *metadata.Cache, threshold float64, multiVersion string) *Matcher {
+func New(db *sql.DB, p *parser.Parser, idx *metadata.Index, client *metadata.Client, cache *metadata.Cache, threshold float64, multiVersion string, seriesFirstConfirm bool) *Matcher {
 	return &Matcher{db: db, parser: p, index: idx, client: client, cache: cache,
-		threshold: threshold, multiVer: multiVersion}
+		threshold: threshold, multiVer: multiVersion, firstConf: seriesFirstConfirm}
 }
 
 // Outcome 单文件处理结果（可观测性 / 测试断言）。
@@ -123,12 +124,36 @@ func (m *Matcher) matchFile(ctx context.Context, fileID int64, pr *domain.ParseR
 	if confidence > 1 {
 		confidence = 1
 	}
+	// D-042：同名多候选且无年份消歧 → 封顶强制人工
+	if cand.ambiguous && confidence >= m.threshold {
+		confidence = m.threshold - 0.01
+	}
 
 	reviewState := domain.PlacementPendingReview
 	if confidence >= m.threshold && slot != domain.SlotIgnored {
 		reviewState = domain.PlacementAutoApproved
 	} else if reason == "" {
-		reason = fmt.Sprintf("置信度 %.2f < %.2f", confidence, m.threshold)
+		if cand.ambiguous {
+			reason = "同名多候选（疑似重制/同名作品），请人工确认系列"
+		} else {
+			reason = fmt.Sprintf("置信度 %.2f < %.2f", confidence, m.threshold)
+		}
+	}
+
+	// D-043：系列首确认——该系列尚无确认态决策时，自动放行降级为人工；
+	// 纯状态推导，存量已放行系列天然豁免。
+	if reviewState == domain.PlacementAutoApproved && m.firstConf {
+		var confirmed bool
+		if err := m.db.QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM placements
+			   WHERE series_id = ? AND review_state IN ('approved','auto_approved'))`, seriesID,
+		).Scan(&confirmed); err != nil {
+			return nil, err
+		}
+		if !confirmed {
+			reviewState = domain.PlacementPendingReview
+			reason = "系列首次确认（该系列尚无已确认决策）"
+		}
 	}
 
 	vault := false
@@ -193,7 +218,47 @@ type seriesCand struct {
 	platform   string
 	date       string
 	titleScore float64
+	ambiguous  bool // 同名多候选且无年份消歧（D-042）
 	online     *metadata.Subject
+}
+
+// nameHit 系列解析的统一候选形状（本地精确行 / FTS 命中）。
+type nameHit struct {
+	id       int64
+	name     string
+	nameCn   string
+	platform string
+	date     string
+}
+
+// sameNameVerdict 应用 D-042：统计与候选归一化标题全等的同名条目；
+// ≥2 且文件年份（若有）不能唯一化 → 首选 + 歧义标记。
+func sameNameVerdict(hits []nameHit, norm string, year *int) (nameHit, bool) {
+	var same []nameHit
+	for _, h := range hits {
+		if domain.NormalizeTitle(h.name) == norm || domain.NormalizeTitle(h.nameCn) == norm {
+			same = append(same, h)
+		}
+	}
+	if len(same) == 0 {
+		return hits[0], false
+	}
+	if len(same) == 1 {
+		return same[0], false
+	}
+	if year != nil {
+		prefix := fmt.Sprintf("%d-", *year)
+		var kept []nameHit
+		for _, h := range same {
+			if strings.HasPrefix(h.date, prefix) {
+				kept = append(kept, h)
+			}
+		}
+		if len(kept) == 1 {
+			return kept[0], false
+		}
+	}
+	return same[0], true
 }
 
 // resolveSeries 本地别名 → bgm 精确 → FTS/LIKE → 在线兜底。
@@ -225,22 +290,32 @@ func (m *Matcher) resolveSeries(ctx context.Context, pr *domain.ParseResult) (*s
 			}
 		}
 		aliasRows.Close()
-		// b. 本地索引精确（归一化后全等）
-		var (
-			sid                          int64
-			name, nameCn, platform, date sql.NullString
-		)
-		err := m.db.QueryRowContext(ctx,
-			`SELECT id, name, name_cn, platform, date FROM bgm_subjects
+		// b. 本地索引精确（归一化后全等；同名多候选走 D-042）
+		rows, berr := m.db.QueryContext(ctx,
+			`SELECT id, name, IFNULL(name_cn, ''), IFNULL(platform, ''), IFNULL(date, '') FROM bgm_subjects
 			 WHERE nsfw = 0 AND (REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '-', ''), ':', '') = ?
 			      OR REPLACE(REPLACE(IFNULL(LOWER(name_cn), ''), ' ', ''), '：', '') = ?)
-			 LIMIT 1`, norm, norm).Scan(&sid, &name, &nameCn, &platform, &date)
-		if err == nil {
-			return &seriesCand{subjectID: sid, name: name.String, nameCn: nameCn.String,
-				platform: platform.String, date: date.String, titleScore: 1.0}, 1.0, nil
+			 LIMIT 5`, norm, norm)
+		if berr != nil {
+			return nil, 0, berr
 		}
-		if !errors.Is(err, sql.ErrNoRows) {
+		var exactHits []nameHit
+		for rows.Next() {
+			var h nameHit
+			if err := rows.Scan(&h.id, &h.name, &h.nameCn, &h.platform, &h.date); err != nil {
+				rows.Close()
+				return nil, 0, err
+			}
+			exactHits = append(exactHits, h)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
 			return nil, 0, err
+		}
+		if len(exactHits) > 0 {
+			best, ambiguous := sameNameVerdict(exactHits, norm, pr.Year)
+			return &seriesCand{subjectID: best.id, name: best.name, nameCn: best.nameCn,
+				platform: best.platform, date: best.date, titleScore: 1.0, ambiguous: ambiguous}, 1.0, nil
 		}
 		// c. FTS/LIKE 检索（命中经 Go 侧归一化复核：全等 1.0 / 包含 0.8 / 弱匹配 0.7）
 		hits, err := m.index.Search(ctx, cand, 5)
@@ -248,8 +323,12 @@ func (m *Matcher) resolveSeries(ctx context.Context, pr *domain.ParseResult) (*s
 			return nil, 0, err
 		}
 		if len(hits) > 0 {
-			h := hits[0]
-			hn1, hn2 := domain.NormalizeTitle(h.Name), domain.NormalizeTitle(h.NameCn)
+			nh := make([]nameHit, 0, len(hits))
+			for _, h := range hits {
+				nh = append(nh, nameHit{h.ID, h.Name, h.NameCn, h.Platform, h.Date})
+			}
+			best, ambiguous := sameNameVerdict(nh, norm, pr.Year)
+			hn1, hn2 := domain.NormalizeTitle(best.name), domain.NormalizeTitle(best.nameCn)
 			score := 0.7
 			switch {
 			case norm == hn1 || norm == hn2:
@@ -258,7 +337,8 @@ func (m *Matcher) resolveSeries(ctx context.Context, pr *domain.ParseResult) (*s
 				hn2 != "" && (strings.Contains(hn2, norm) || strings.Contains(norm, hn2)):
 				score = 0.8
 			}
-			return &seriesCand{subjectID: h.ID, name: h.Name, nameCn: h.NameCn, platform: h.Platform, date: h.Date, titleScore: score}, score, nil
+			return &seriesCand{subjectID: best.id, name: best.name, nameCn: best.nameCn,
+				platform: best.platform, date: best.date, titleScore: score, ambiguous: ambiguous}, score, nil
 		}
 	}
 	// d. 在线兜底（本地索引缺失/过旧时；结果必须经 GetSubject 核验，D-019）
