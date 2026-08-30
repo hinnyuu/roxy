@@ -101,9 +101,15 @@ func serve(configPath string) error {
 	}
 	sessions := auth.NewSessionStore()
 
+	deps, runner, err := buildDeps(ctx, cfg, database)
+	if err != nil {
+		return err
+	}
+	defer runner.Wait()
+
 	srv := &http.Server{
 		Addr:    net.JoinHostPort(cfg.Server.Host, fmt.Sprint(cfg.Server.Port)),
-		Handler: api.NewServer(cfg, authSvc, sessions, version).Handler(),
+		Handler: api.NewServer(cfg, authSvc, sessions, version, deps).Handler(),
 	}
 
 	errCh := make(chan error, 1)

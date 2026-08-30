@@ -30,6 +30,7 @@ type Runner struct {
 
 	mu      sync.Mutex
 	wake    chan struct{}
+	done    chan struct{}
 	running map[int64]context.CancelFunc
 }
 
@@ -39,8 +40,12 @@ func NewRunner(db *sql.DB) *Runner {
 		handlers: map[string]Handler{},
 		wake:     make(chan struct{}, 1),
 		running:  map[int64]context.CancelFunc{},
+		done:     make(chan struct{}),
 	}
 }
+
+// Wait 阻塞直到 Run 循环退出（用于优雅关闭时等待在途任务收尾）。
+func (r *Runner) Wait() { <-r.done }
 
 // Register 注册任务类型处理器（重复注册为编程错误，直接 panic）。
 func (r *Runner) Register(kind string, h Handler) {
@@ -113,6 +118,7 @@ func (r *Runner) Cancel(ctx context.Context, id int64) error {
 
 // Run 启动 worker 循环直到 ctx 结束；启动时把上次进程遗留的 running 标记 failed。
 func (r *Runner) Run(ctx context.Context) error {
+	defer close(r.done)
 	if _, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET state = ?, error = ?, finished_at = ? WHERE state = ?`,
 		domain.TaskFailed, "interrupted by restart", domain.Now(), domain.TaskRunning); err != nil {
@@ -188,7 +194,11 @@ func (r *Runner) process(parent context.Context, id int64, kind, payload string)
 	}()
 
 	report := func(progressJSON string) {
-		if _, err := r.db.ExecContext(context.Background(),
+		// 短超时：长写事务（dump 导入）进行中时跳过进度（避免阻塞 handler），
+		// 由后续 phase 上报补上。
+		pctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+		defer cancel()
+		if _, err := r.db.ExecContext(pctx,
 			`UPDATE tasks SET progress = ? WHERE id = ?`, progressJSON, id); err != nil {
 			slog.Error("task: progress update failed", "id", id, "err", err)
 		}

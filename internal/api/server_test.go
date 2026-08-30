@@ -31,7 +31,7 @@ func setupServer(t *testing.T) (*httptest.Server, *http.Client) {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	cfg := config.Default()
-	srv := NewServer(cfg, svc, auth.NewSessionStore(), "test")
+	srv := NewServer(cfg, svc, auth.NewSessionStore(), "test", Deps{})
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 

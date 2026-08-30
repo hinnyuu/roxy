@@ -737,6 +737,7 @@ scanner:
   GET|POST   /api/sources              列表/新增
   PUT|DELETE /api/sources/{id}         修改/删除
   POST       /api/sources/{id}/scan    手动触发扫描
+  GET        /api/sources/{id}/files   文件清单（含解析结果；M2 增补，验收项"解析结果展示"）
 
 索引（M2 增补，D-022 的运维入口）
   GET  /api/index                      本地 Bangumi 索引状态（dump 版本/导入时间/条目计数/进行中任务）

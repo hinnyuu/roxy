@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,11 @@ import (
 
 	"github.com/hinnyuu/roxy/internal/auth"
 	"github.com/hinnyuu/roxy/internal/config"
+	"github.com/hinnyuu/roxy/internal/matcher"
+	"github.com/hinnyuu/roxy/internal/metadata"
+	"github.com/hinnyuu/roxy/internal/review"
+	"github.com/hinnyuu/roxy/internal/scanner"
+	"github.com/hinnyuu/roxy/internal/task"
 )
 
 //go:embed ui/index.html
@@ -18,16 +24,31 @@ var uiFS embed.FS
 
 const sessionCookie = "roxy_session"
 
+// Deps M2 起的服务依赖（main.go 装配）。
+type Deps struct {
+	DB       *sql.DB
+	Sources  *scanner.Store
+	Scanner  *scanner.Scanner
+	Matcher  *matcher.Matcher
+	Review   *review.Service
+	Tasks    *task.Runner
+	Importer *metadata.Importer
+	Index    *metadata.Index
+}
+
 type Server struct {
 	cfg      *config.Config
 	auth     *auth.Service
 	sessions *auth.SessionStore
 	version  string
+	deps     Deps
 }
 
-func NewServer(cfg *config.Config, authSvc *auth.Service, sessions *auth.SessionStore, version string) *Server {
-	return &Server{cfg: cfg, auth: authSvc, sessions: sessions, version: version}
+func NewServer(cfg *config.Config, authSvc *auth.Service, sessions *auth.SessionStore, version string, deps Deps) *Server {
+	return &Server{cfg: cfg, auth: authSvc, sessions: sessions, version: version, deps: deps}
 }
+
+func (s *Server) db() *sql.DB { return s.deps.DB }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -37,6 +58,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/auth/me", s.requireAuth(s.handleMe))
 	mux.HandleFunc("PUT /api/auth/credentials", s.requireAuth(s.handleCredentials))
 	mux.HandleFunc("GET /api/health", s.handleHealth)
+
+	s.registerSources(mux)
+	s.registerReview(mux)
+	s.registerTasks(mux)
+	s.registerIndex(mux)
 
 	ui, _ := uiFS.ReadFile("ui/index.html")
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {

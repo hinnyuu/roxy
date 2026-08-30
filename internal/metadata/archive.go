@@ -106,52 +106,71 @@ func (im *Importer) Import(ctx context.Context, localPath string, report Report)
 		}
 	}
 
+	stats := &ImportStats{Version: version}
+
+	// 分段提交（每阶段一个事务）：避免长写事务横跨进度上报，
+	// 且中断后的半成品索引会在下次刷新整体重建（派生数据，可自愈）。
+
+	// 趟 1：清空 + 动画条目（type=2）
 	tx, err := im.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
-
 	// bgm_subjects 的 ad 触发器同步清理 FTS（外部内容表禁止直接 DELETE）。
 	for _, tbl := range []string{"bgm_relations", "bgm_episodes", "bgm_subjects"} {
 		if _, err := tx.ExecContext(ctx, "DELETE FROM "+tbl); err != nil {
+			tx.Rollback()
 			return nil, err
 		}
 	}
-
-	stats := &ImportStats{Version: version}
-
-	// 趟 1：动画条目（type=2）
-	report(`{"phase":"subjects"}`)
 	animeIDs, err := importSubjects(ctx, tx, members[memberSubjects], stats)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	stats.Subjects = len(animeIDs)
+	if err := upsertMeta(ctx, tx, "dump_version", version); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	report(fmt.Sprintf(`{"phase":"episodes","subjects":%d}`, stats.Subjects))
 
 	// 趟 2：章节（仅动画条目）
-	report(fmt.Sprintf(`{"phase":"episodes","subjects":%d}`, stats.Subjects))
+	tx, err = im.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
 	epCount, err := importEpisodes(ctx, tx, members[memberEpisodes], animeIDs)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	stats.Episodes = epCount
-
-	// 趟 3：关联（任一端为动画即保留，M3 franchise 遍历用）
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
 	report(fmt.Sprintf(`{"phase":"relations","episodes":%d}`, stats.Episodes))
-	relCount, err := importRelations(ctx, tx, members[memberRelations], animeIDs)
+
+	// 趟 3：关联（任一端为动画即保留，M3 franchise 遍历用）+ 元信息
+	tx, err = im.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	stats.Relations = relCount
-
-	if err := upsertMeta(ctx, tx, "dump_version", version); err != nil {
+	relCount, err := importRelations(ctx, tx, members[memberRelations], animeIDs)
+	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
+	stats.Relations = relCount
 	if err := upsertMeta(ctx, tx, "imported_at", domain.Now()); err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	if err := upsertMeta(ctx, tx, "source_url", sourceURL); err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {

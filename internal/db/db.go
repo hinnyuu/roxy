@@ -20,7 +20,9 @@ func Open(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite %s: %w", path, err)
 	}
-	d.SetMaxOpenConns(1)
+	// WAL 允许并发读；长事务（如 dump 导入）期间进度上报与 API 读取需要其他连接，
+	// 写写冲突由 busy_timeout 兜底。单 worker 任务运行器保证写重任务串行。
+	d.SetMaxOpenConns(4)
 	if err := d.Ping(); err != nil {
 		d.Close()
 		return nil, fmt.Errorf("ping sqlite %s: %w", path, err)
