@@ -13,7 +13,9 @@
   Emby `-trailer` 红线（D-037）；发现 Jellyfin 多版本不合并（D-038 立项）。
 - **M1.5：完成**（2026-08-30）——Jellyfin 三变体探针全部不合并，
   D-038 定稿 + D-039 版本仓库机制确立（迁移 0002 落地）。
-- **当前阶段：M1/M1.5 全部收尾，待推送后启动 M2**。
+- **当前阶段：M1/M1.5 全部收尾并已推送，可以开始 M2**。
+- 前置检查：先确认最近一次推送的 GitHub Actions CI 为绿、
+  `ghcr.io/hinnyuu/roxy:dev` 镜像可用（M2 宿主机测试依赖）。
 - 下一步动作：M2（扫描 + 规则解析 + Bangumi 客户端与 Archive 本地索引
   + 规则匹配 + 审核队列骨架 + WebUI 骨架）。
 - README.md 的"项目状态"节指向本节；禁止在其他位置重复维护进度。
@@ -82,6 +84,7 @@
   `第01话`/`EP01`/`01v2`/`12.5`）、version_key 归一化、字幕语言标签映射
 - Bangumi 客户端（匿名 + 规范 UA）+ **Archive dump 导入（本地 FTS 索引）**
 - 规则匹配 + 审核队列骨架；WebUI 骨架（登录/源管理/队列只读）
+- `deployments/podman/test-up.sh` / `test-down.sh`（宿主机测试拓扑一键起/拆）
 
 **容器内验收**
 - 解析器 golden 测试（testdata/ 命名样本，含 VCB 风格复合括号用例）

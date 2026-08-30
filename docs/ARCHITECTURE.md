@@ -1,7 +1,8 @@
 # roxy 架构文档
 
-> 状态：规划冻结版（五轮设计讨论的完整沉淀）。命名规范部分为**草案**，
-> 待 M1 兼容性实测后冻结。变更本文档须同步更新 `docs/DECISIONS.md`。
+> 状态：**M1/M1.5 实测冻结版**。命名规范主体已冻结（D-036），版本仓库机制定稿
+> （D-038/D-039）；唯一剩余的未实测例外是**字幕拾取行为**（待 M4 真实媒体实测）。
+> 变更本文档须同步更新 `docs/DECISIONS.md`。
 
 ---
 
@@ -126,10 +127,11 @@ podman run emby:      -v test_share:/media:ro
 
 ## 4. 目录结构与命名规范
 
-> 状态：**M1 实测冻结**（2026-08-30，Jellyfin 10.11.11 + Emby 4.9.5，
-> 记录见 `docs/testing/m1.md`，决策 D-036）。
-> 两个未决例外：**版本后缀模板**待 M1.5 探针（D-038）；**字幕拾取行为**
-> 待 M4 真实媒体实测。任何命名变更必须先修 `docs/DECISIONS.md` 并重列实测清单。
+> 状态：**实测冻结**（M1 2026-08-30，Jellyfin 10.11.11 + Emby 4.9.5，
+> 记录见 `docs/testing/m1.md`，决策 D-036；版本后缀形态经 M1.5 探针定稿，
+> 见 D-038/D-039）。
+> 唯一未决例外：**字幕拾取行为**待 M4 真实媒体实测。
+> 任何命名变更必须先修 `docs/DECISIONS.md` 并重列实测清单。
 
 ### 媒体库布局
 
@@ -144,8 +146,8 @@ library/
 │       │   ├── S01E01 - 第01话 标题.mkv          → 相对软链接
 │       │   ├── S01E01 - 第01话 标题.nfo          # 实体文件
 │       │   ├── S01E01 - 第01话 标题.zh-CN.srt    → 相对软链接
-│       │   └── S01E01 - 第01话 标题 [VCB-Studio].mkv   # 多版本并存时加后缀
-│       └── Extras/                    # PV/CM（按策略，待实测 Jellyfin extras 识别）
+│       │   └── （库内只有主版本、无后缀；非主版本见下方 vault/ 示例，D-039）
+│       └── Extras/                    # PV/CM（Jellyfin 识别为花絮；Emby 并入特别篇，D-036/037）
 └── movies/
     └── 某番剧 剧场版 某某 (2025)/
         ├── 某番剧 剧场版 某某 (2025).mkv → 相对软链接
@@ -703,10 +705,19 @@ scanner:
 
 环境变量覆盖约定：`ROXY_` 前缀，层级以 `_` 连接（如
 `ROXY_SERVER_PORT=9090`、`ROXY_MEDIA_LIBRARY_ROOT=/srv/library`）。
+当前已实现的覆盖键为子集：`ROXY_SERVER_HOST` / `ROXY_SERVER_PORT` /
+`ROXY_DATA_DIR` / `ROXY_AUTH_MODE` / `ROXY_MEDIA_LIBRARY_ROOT` /
+`ROXY_MEDIA_LINK_MODE` / `ROXY_POLICY_AUTO_APPROVE_THRESHOLD` /
+`ROXY_POLICY_MULTI_VERSION` / `ROXY_SCANNER_RESCAN_INTERVAL`，
+以 `internal/config/config.go` 的 `applyEnv` 为准。
 
 ## 14. REST API 端点清单
 
 前缀 `/api`；除 login 外均需会话认证；`/api/events` 为 SSE。
+
+**实现状态**：M0 已实现认证四端点（login/logout/me/credentials）与
+`/api/health`；其余为规划目标，按 ROADMAP 里程碑逐步交付（实现以
+`internal/api/` 代码为准）。
 
 ```
 认证

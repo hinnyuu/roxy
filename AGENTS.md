@@ -62,9 +62,9 @@ npm --prefix web run lint
    可经台账精确回滚。
 4. **软链接相对路径优先**：链接目标默认用相对路径（依赖"单一公共父目录"部署形态）；
    绝对路径 + 路径映射只是兜底代码路径。
-5. **命名规范冻结前必须实测**：文件系统层命名（目录/链接名）遵循
-   `docs/ARCHITECTURE.md` 的命名规范。该规范在 M1 兼容性实测后冻结；冻结前的任何
-   命名变更必须更新文档并重新列入实测清单。
+5. **命名规范已冻结，变更须重测**：文件系统层命名（目录/链接名）遵循
+   `docs/ARCHITECTURE.md` §4（M1/M1.5 实测冻结，D-036/D-038/D-039）。任何
+   命名变更必须先修 `docs/DECISIONS.md`，并重新列入实测清单重测后才可生效。
 6. **LLM 输出无证据即无效**：所有 LLM 结构化输出必须携带 evidence（引用的 API 条目），
    验证器回查 API 交叉校验后才可采信。禁止绕过验证器直接落库。
 7. **搜索只产候选**：任何网络搜索/联网工具的结果只能用于生成候选，最终匹配必须经
@@ -97,15 +97,19 @@ npm --prefix web run lint
   检查单见 `docs/ROADMAP.md` 与 `docs/testing/`。交付物为"二进制直跑（迭代）+
   OCI 镜像（集成测试）"双轨。
 - 因此：涉及真实服务器行为（Jellyfin/Emby 解析、转码、字幕拾取）的假设，必须标注为
-  "待 M1 实测"，不得当成已验证事实写进代码断言。
+  "待宿主机实测（注明对应里程碑）"，不得当成已验证事实写进代码断言。
+  已验证的结论见 `docs/RESEARCH.md` §7。
 
-## 目录结构（规划，随 M0 落地）
+## 目录结构（现状；scanner/parser 等业务包暂为 doc.go 占位，按 ROADMAP 逐步实现）
 
 ```
-cmd/roxy/          入口
+cmd/roxy/          入口（serve/version）
+cmd/fixturegen/    测试假库生成器（M1 夹具；-probe 探针模式）
 internal/
+  config/          YAML 配置 + ROXY_* 环境变量覆盖 + 校验
+  auth/            会话认证（bcrypt、会话存储、初始引导）
   domain/          实体与状态机
-  db/              SQLite + 迁移
+  db/              SQLite + 迁移（schema 唯一事实源）
   scanner/         源发现（dirscan v1；qbit/transmission v2）
   parser/          文件名/目录解析（规则引擎 + LLM 兜底）
   metadata/        bangumi / anilist / tmdb 适配器 + 字段合并
@@ -114,8 +118,8 @@ internal/
   organizer/       软链接 / NFO / 图片 / 字幕配对
   ledger/          台账、返工、漂移对账
   review/          审核队列、反馈笔记
-  api/             REST + SSE
-web/               React + TS 前端（go:embed 内嵌）
+  api/             REST + SSE（M0 已实现：认证四端点 + health + UI 占位页）
+web/               React + TS 前端（go:embed 内嵌；尚未创建，M2 起）
 deployments/       podman/（测试脚本）→ quadlet/ + compose/（M6）
 testdata/          解析器 fixture 与命名样本（可入库，纯文本/KB 级假文件）
 docs/              架构、决策、路线图、调研、测试文档
