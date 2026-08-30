@@ -389,3 +389,34 @@
      为 Jellyfin（主力）统一行为的代价，用户已确认接受。
   7. **配置**：`policy.multi_version: vault | tolerate`，默认 `vault`。
   8. 漂移巡检（reconcile）同时覆盖 library 与 vault。
+
+## D-040 WebUI 组件库：antd + 深色默认主题
+
+- 状态：accepted（2026-08-30，M2 启动时定案）
+- 决策：前端 React + TypeScript + Vite（D-028）之上，组件库采用 Ant Design
+  （antd v5），深色主题为默认（antd ConfigProvider dark algorithm）；不额外引入
+  状态管理库（React 内建状态 + 轮询足够，M5 再评估）。
+- 理由：M5 页面均为管理台型（审核队列表格、策略 diff 预览、NFO 编辑器表单、
+  台账/任务/LLM 日志浏览器），antd 的表格/表单/模态框资产最匹配，中文文档一流；
+  tree-shaking 后的 bundle 增量相对 Go 二进制本体可忽略；深色与媒体服务器生态
+  惯例一致（Jellyfin/Emby 均深色），占位页亦已是深色风格。
+- 备选（拒绝）：纯 React + 手写 CSS（M5 表格/表单/模态框基建工作量过大）；
+  shadcn/ui + Tailwind（额外工具链成本，无中文本地化优势）。
+
+## D-041 前端构建集成：buildNpmPackage 派生 + go:embed build tag 分流
+
+- 状态：accepted（2026-08-30，M2 启动时定案）
+- 背景：`web/dist` 须经 go:embed 内嵌进二进制，但 go:embed 不能跨包引用，
+  且 dist 不存在时 `go build` 直接失败；flake 是唯一构建定义（D-030），
+  npm 构建也必须由 Nix 锁定。
+- 决策：
+  1. embed 声明置于仓库根 `web/` 包：`embed_web.go`（build tag `web`）嵌入
+     真实 dist；`embed_stub.go`（无 tag 默认）嵌入占位页——无 node 环境
+     `go build ./...` 恒绿，业务测试不受前端构建牵制；
+  2. flake.nix 新增 `buildNpmPackage` 派生构建 `web/`（package-lock.json +
+     npmDepsHash 锁定），`buildGoModule` 的 preBuild 将产物注入 `web/dist`
+     并以 `GOFLAGS=-tags=web` 构建；
+  3. 开发循环：`npm --prefix web run dev`（Vite dev server 代理 `/api` 到
+     Go 后端）；生产二进制一律经 `nix build`，单一构建定义不破。
+- 理由：把"开发态免 node"与"生产必含前端"分离；npm 派生的可复现性与
+  go.sum + vendorHash（D-035）同构。

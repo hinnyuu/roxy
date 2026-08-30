@@ -37,7 +37,7 @@
 
 ## 2. bangumi/Archive（官方全量数据 dump）
 
-**状态：[已验证] 2026-08-29（仓库 README）**
+**状态：[已验证] 2026-08-29（仓库 README）；2026-08-30 补充格式与体积核验**
 
 - 仓库：`https://github.com/bangumi/Archive`；定位：官方定期导出 wiki 数据，
   明确鼓励用于"不需要实时数据的场景"以减少爬虫。
@@ -53,11 +53,19 @@
     3 ED / 4 Trailer / 5 MAD / 6 其他**——与 roxy 槽位分类同构。
   - **条目关联**：`subject_id`、`related_subject_id`、`relation_type`、`order`。
   - 人物/角色及其关联（v1 不导入）。
+- **格式与体积（2026-08-30 实测核验）**：单一 zip（约 435MB，2026-08-25 版，
+  近年以约 100MB/年 增长），根目录含 **9 个 JSONL**：`subject` / `person` /
+  `character` / `episode` / `subject-relations` / `subject-persons` /
+  `subject-characters` / `person-characters` / `person-relations`，每行一个
+  JSON 对象。`subject.jsonlines` 占大头（解压后约 1GB，含全部条目类型与
+  infobox 原始 wiki 字符串）→ **导入必须流式逐行过滤 type=2**。
+  `aux/latest.json` 提供最新 zip 的 `browser_download_url` 与 `digest`
+  （sha256，可校验）。导入耗时待 M2 真实 dump 实测回填。
 - 常量对应关系（relation/platform/staff）：`github.com/bangumi/common`（yaml）。
+  动画 platform：1=TV / 2=OVA / 3=剧场版 / 4=短片 / 5=WEB / 2006=漫画动画；
+  动画 relation_type：1=改编 / 2=前传 / 3=续集 / 4=总集篇 / 5=全集 / 6=番外篇 等。
 - infobox 解析（如需制作组等字段）：官方 Go 解析器
   `github.com/bangumi/wiki-parser-go`（语法规范 `bangumi/wiki-syntax-spec`）。
-- **[待验证]（M2）**：dump 实际体积（压缩/解压）、文件格式与分片方式、
-  导入耗时。磁盘预算：宿主机 3TB SSD，无约束。
 
 ## 3. AniList API v2
 
