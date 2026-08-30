@@ -43,7 +43,7 @@ go vet ./... && gofmt -l cmd internal   # 静态检查（gofmt 输出必须为�
 nix build                      # 生产二进制冒烟测试：./result/bin/roxy --help
 nix build .#image              # OCI 镜像（dockerTools，无需 daemon）
 
-# 前端（web/ 目录就绪后启用）
+# 前端（M2 起生效；本地 go build 默认走占位页，无需 npm）
 npm --prefix web ci
 npm --prefix web run build
 npm --prefix web run lint
@@ -100,28 +100,30 @@ npm --prefix web run lint
   "待宿主机实测（注明对应里程碑）"，不得当成已验证事实写进代码断言。
   已验证的结论见 `docs/RESEARCH.md` §7。
 
-## 目录结构（现状；scanner/parser 等业务包暂为 doc.go 占位，按 ROADMAP 逐步实现）
+## 目录结构（现状；llm/organizer/ledger 暂为 doc.go 占位，按 ROADMAP 逐步实现）
 
 ```
-cmd/roxy/          入口（serve/version）
+cmd/roxy/          入口（serve/version；deps.go 装配流水线与调度）
 cmd/fixturegen/    测试假库生成器（M1 夹具；-probe 探针模式）
 internal/
   config/          YAML 配置 + ROXY_* 环境变量覆盖 + 校验
   auth/            会话认证（bcrypt、会话存储、初始引导）
-  domain/          实体与状态机
+  domain/          实体与状态机 + 文本归一化（半角/比对键）
   db/              SQLite + 迁移（schema 唯一事实源）
   scanner/         源发现（dirscan v1；qbit/transmission v2）
-  parser/          文件名/目录解析（规则引擎 + LLM 兜底）
-  metadata/        bangumi / anilist / tmdb 适配器 + 字段合并
-  matcher/         系列解析、集映射、验证器、置信度
+  parser/          文件名解析规则引擎（LLM 兜底 M3）
+  metadata/        bangumi 客户端 + Archive dump 导入 + FTS 检索（anilist/tmdb M3）
+  matcher/         系列解析、集映射、置信度（验证器 M3）
+  task/            异步任务运行器（单 worker，kind→handler 注册表）
   llm/             Chat Completions 抽象、schema 校验、重试
   organizer/       软链接 / NFO / 图片 / 字幕配对
   ledger/          台账、返工、漂移对账
-  review/          审核队列、反馈笔记
-  api/             REST + SSE（M0 已实现：认证四端点 + health + UI 占位页）
-web/               React + TS 前端（go:embed 内嵌；尚未创建，M2 起）
-deployments/       podman/（测试脚本）→ quadlet/ + compose/（M6）
-testdata/          解析器 fixture 与命名样本（可入库，纯文本/KB 级假文件）
+  review/          审核队列（M2 骨架）、反馈笔记（M5）
+  api/             REST（M2 已实现：认证/health/sources/files/review/tasks/index）；SSE 排 M3
+web/               React + TS + antd 前端（go:embed 经 -tags=web 内嵌，D-040/D-041；
+                   默认构建为占位页，生产一律 nix build）
+deployments/       podman/（test-up/test-down 已交付）→ quadlet/ + compose/（M6）
+testdata/          解析器 golden（parser/cases.jsonl）与索引夹具（archive/*.jsonlines）
 docs/              架构、决策、路线图、调研、测试文档
 ```
 
