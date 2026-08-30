@@ -5,9 +5,12 @@ package domain
 // 使 matcher 不区分解析来源。
 type ParseResult struct {
 	TitleCandidates []string `json:"title_candidates"`
+	Season          *int     `json:"season_hint,omitempty"`    // S01E02 式季度号
+	Year            *int     `json:"year,omitempty"`           // 括号年份（剧场版常见）
 	EpisodeRaw      string   `json:"ep_number_raw"`            // 原始集数字符串（如 "01v2"、"12.5"、"01-02"）
 	Episode         *float64 `json:"episode,omitempty"`        // 归一化起始集号
 	EpisodeEnd      *float64 `json:"episode_end,omitempty"`    // 多集合一文件的结束集号
+	EpisodeTitle    string   `json:"episode_title,omitempty"`  // 集数模式后的残留集标题
 	EPTypeHint      string   `json:"ep_type_hint"`             // tv|special|ova|movie|op|ed|pv|cm|unknown
 	ReleaseGroup    string   `json:"release_group"`            // 首个中括号原始字符串
 	VersionKey      string   `json:"version_key"`              // 归一化后的中括号（配对键，D-012）
