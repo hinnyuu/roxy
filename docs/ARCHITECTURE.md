@@ -243,6 +243,9 @@ new → parsed → proposed(匹配+置信度分解)
 3. 置信度分解（可解释）
    标题匹配分 + API 证据一致分 + 规则命中强度 + LLM 自报置信度
    → 加权得总分；≥ auto_approve_threshold(0.90) 自动放行，否则人工
+   规则档两道保险（M2.5）：同名多候选封顶（D-042，≥2 个归一化标题相同的
+   候选且无年份消歧 → 封顶 threshold-0.01 强制人工）；系列首确认
+   （D-043，系列首个自动放行决策强制转人工，已有确认态则豁免）
 
 4. 落盘（Organizer）
    按生效策略（手动指定 > 系列覆盖 > 全局策略）生成路径 → 原子创建 → 记台账
@@ -395,6 +398,7 @@ VCB 系等惯例标签 → 标准后缀：`JPSC→zh-CN`、`JPTC→zh-TW`、`SC�
 | `pv_cm` | `extras` / `skip` | `extras` |
 | `multi_version` | `vault`（版本仓库，D-039）/ `tolerate`（容忍重复条目） | `vault` |
 | `auto_approve_threshold` | 0–1 | `0.90` |
+| `series_first_confirm` | `true` / `false`（系列首个决策强制人工确认，D-043） | `true` |
 
 ### 10.2 策略变更与返工
 
@@ -675,6 +679,7 @@ policy:                                 # 全局默认，可被系列级覆盖�
   ncop_nced: s00
   pv_cm: extras
   multi_version: vault                  # vault | tolerate（D-039）
+  series_first_confirm: true            # 系列首确认（D-043）
   auto_approve_threshold: 0.90
 
 llm:
@@ -715,7 +720,8 @@ scanner:
 当前已实现的覆盖键为子集：`ROXY_SERVER_HOST` / `ROXY_SERVER_PORT` /
 `ROXY_DATA_DIR` / `ROXY_AUTH_MODE` / `ROXY_MEDIA_LIBRARY_ROOT` /
 `ROXY_MEDIA_LINK_MODE` / `ROXY_POLICY_AUTO_APPROVE_THRESHOLD` /
-`ROXY_POLICY_MULTI_VERSION` / `ROXY_SCANNER_RESCAN_INTERVAL`，
+`ROXY_POLICY_MULTI_VERSION` / `ROXY_POLICY_SERIES_FIRST_CONFIRM` /
+`ROXY_SCANNER_RESCAN_INTERVAL`，
 以 `internal/config/config.go` 的 `applyEnv` 为准。
 
 ## 14. REST API 端点清单
