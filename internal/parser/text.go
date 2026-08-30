@@ -12,7 +12,9 @@ import (
 func normalizeKey(s string) string { return domain.NormalizeKey(s) }
 func toHalfWidth(s string) string  { return domain.ToHalfWidth(s) }
 
-var bracketRe = regexp.MustCompile(`\[([^\[\]]*)\]|\(([^()]*)\)|\{([^{}]*)\}`)
+// bracketRe 半角与全角括号并列：入口不做整体半角化，以保留标题原始字符
+// （显示层忠实于文件名，D-012 归一化只用于比对键）。
+var bracketRe = regexp.MustCompile(`\[([^\[\]]*)\]|【([^【】]*)】|\(([^()]*)\)|（([^（）]*)）|\{([^{}]*)\}`)
 
 // extractBrackets 按出现顺序提取括号内容，并把括号连同其内容从字符串中移除。
 func extractBrackets(s string) (groups []string, stripped string) {
@@ -97,6 +99,12 @@ func findYear(brackets []string) *int {
 
 var titleCleanupRe = regexp.MustCompile(`\s+`)
 
+// rawClean 保留原始字符的标题修剪：仅折叠空白并去首尾分隔符。
+func rawClean(s string) string {
+	s = titleCleanupRe.ReplaceAllString(s, " ")
+	return strings.Trim(s, " \t-~|_.～—–")
+}
+
 // cleanTitle 修剪标题残留：折叠空白、去首尾分隔符。
 func cleanTitle(s string) string {
 	s = toHalfWidth(s)
@@ -121,6 +129,7 @@ func titleCandidates(stripped string, epSpan [2]int) []string {
 		seen[t] = true
 		out = append(out, t)
 	}
+	add(rawClean(head))
 	add(cleanTitle(head))
 	add(cleanTitle(strings.TrimRightFunc(toHalfWidth(head), func(r rune) bool {
 		return r == '!' || r == '？' || r == '?'
