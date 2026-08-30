@@ -311,15 +311,28 @@ func (m *Matcher) ensureSeries(ctx context.Context, cand *seriesCand) (int64, er
 	return id, nil
 }
 
-// mapPlatform dump platform 字符串 → series_type / library_kind（RESEARCH §2 常量表）。
+// mapPlatform 平台 → series_type / library_kind。dump 数字码为主（RESEARCH §2：
+// 1=TV 2=OVA 3=剧场版 4=短片 5=WEB 2006=漫画动画），在线 API 返回字符串，两者兼容。
 func mapPlatform(platform string) (string, string) {
-	p := strings.ToLower(platform)
+	p := strings.ToLower(strings.TrimSpace(platform))
+	switch p {
+	case "1", "tv":
+		return "tv", "tv"
+	case "2", "ova", "oad":
+		return "ova", "tv"
+	case "3", "movie", "film":
+		return "movie", "movie"
+	case "4":
+		return "special", "tv"
+	case "5", "web", "ona":
+		return "ona", "tv"
+	}
 	switch {
 	case strings.Contains(p, "剧") || strings.Contains(p, "movie") || strings.Contains(p, "film"):
 		return "movie", "movie"
 	case strings.Contains(p, "ova") || strings.Contains(p, "oad"):
 		return "ova", "tv"
-	case strings.Contains(p, "web") || strings.Contains(p, "ona"):
+	case strings.Contains(p, "web"):
 		return "ona", "tv"
 	case strings.Contains(p, "tv"):
 		return "tv", "tv"

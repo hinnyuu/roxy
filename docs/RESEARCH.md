@@ -60,10 +60,18 @@
   JSON 对象。`subject.jsonlines` 占大头（解压后约 1GB，含全部条目类型与
   infobox 原始 wiki 字符串）→ **导入必须流式逐行过滤 type=2**。
   `aux/latest.json` 提供最新 zip 的 `browser_download_url` 与 `digest`
-  （sha256，可校验）。导入耗时待 M2 真实 dump 实测回填。
+  （sha256，可校验）。
+- **导入实测（2026-08-30，容器内，dump-2026-08-25 版）**：下载+校验+全量导入
+  共约 **71 秒**；入库动画条目 **30,745** / 章节 **343,294** / 关联 **138,820**；
+  SQLite 索引仅约 **50–70MB**（远小于 1–2GB 预算）。检索质量抽检：多季前缀
+  排名正确（无职转生五季、芙莉莲两期+衍生）、章节 ep_type 分布正确（含 OP/ED/
+  特别篇）。
 - 常量对应关系（relation/platform/staff）：`github.com/bangumi/common`（yaml）。
-  动画 platform：1=TV / 2=OVA / 3=剧场版 / 4=短片 / 5=WEB / 2006=漫画动画；
-  动画 relation_type：1=改编 / 2=前传 / 3=续集 / 4=总集篇 / 5=全集 / 6=番外篇 等。
+  **dump 中 platform 与 relation_type 为数字码**（2026-08-30 真实 dump 核验；
+  在线 API 的 platform 为字符串）：动画 platform 1=TV / 2=OVA / 3=剧场版 /
+  4=短片 / 5=WEB / 2006=漫画动画；动画 relation_type 1=改编 / 2=前传 /
+  3=续集 / 4=总集篇 / 5=全集 / 6=番外篇 等；跨类型关联携带对方类别的编码
+  （如 3001–3004 为书籍类关联）。
 - infobox 解析（如需制作组等字段）：官方 Go 解析器
   `github.com/bangumi/wiki-parser-go`（语法规范 `bangumi/wiki-syntax-spec`）。
 

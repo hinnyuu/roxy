@@ -331,8 +331,8 @@ mapping: [{file, season, episode, slot_type(tv|special|movie|op|ed|pv|cm|extra),
   bgm_episodes / bgm_relations` 表 + FTS5（导入事务内摘除/重建 FTS 触发器，
   批量插入后 `rebuild`，避免百万行逐行触发）。
 - 刷新：`index_refresh` 任务，默认每周自动（可关）；检索为 unicode61 分词，
-  中文走前缀查询 + LIKE 兜底两级（trigram 为后备升级路径）；SQLite 索引实际
-  体积与导入耗时 M2 实测回填（磁盘无约束，宿主机 3TB SSD）。
+  中文走前缀查询 + LIKE 兜底两级（trigram 为后备升级路径）；实测（M2）：
+  全量导入约 71s、索引约 50–70MB（见 RESEARCH.md §2）。
 - infobox 原始 wiki 字符串暂不解析（需要时用官方 `bangumi/wiki-parser-go`）。
 
 ## 9. 版本模型与字幕配对

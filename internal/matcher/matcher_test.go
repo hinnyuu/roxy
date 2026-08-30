@@ -279,6 +279,31 @@ func TestPipelineMovie(t *testing.T) {
 	}
 }
 
+func TestMapPlatform(t *testing.T) {
+	cases := []struct {
+		in   string
+		typ  string
+		kind string
+	}{
+		{"1", "tv", "tv"}, // dump 数字码
+		{"2", "ova", "tv"},
+		{"3", "movie", "movie"},
+		{"4", "special", "tv"},
+		{"5", "ona", "tv"},
+		{"TV", "tv", "tv"}, // 在线 API 字符串
+		{"OVA", "ova", "tv"},
+		{"剧场版", "movie", "movie"},
+		{"WEB", "ona", "tv"},
+		{"", "special", "tv"},
+	}
+	for _, c := range cases {
+		typ, kind := mapPlatform(c.in)
+		if typ != c.typ || kind != c.kind {
+			t.Errorf("mapPlatform(%q) = %s/%s, want %s/%s", c.in, typ, kind, c.typ, c.kind)
+		}
+	}
+}
+
 func TestOnlineFallbackCreatesSeries(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v0/search/subjects", func(w http.ResponseWriter, r *http.Request) {
