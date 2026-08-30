@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/hinnyuu/roxy/internal/domain"
@@ -88,7 +89,8 @@ func (x *Index) Search(ctx context.Context, query string, limit int) ([]Hit, err
 	if q == "" {
 		return nil, nil
 	}
-	tokens := strings.Fields(q)
+	// 与 unicode61 索引分词对齐：标点视为分隔符（"Re:Zero" → re/zero）。
+	tokens := ftsSplitRe.Split(q, -1)
 	if len(tokens) > 0 {
 		parts := make([]string, 0, len(tokens))
 		for _, t := range tokens {
@@ -146,3 +148,5 @@ func escapeLike(s string) string {
 	s = strings.ReplaceAll(s, `_`, `\_`)
 	return s
 }
+
+var ftsSplitRe = regexp.MustCompile(`[^0-9a-z\x{3040}-\x{30ff}\x{4e00}-\x{9fff}]+`)
