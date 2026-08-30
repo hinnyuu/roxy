@@ -1,0 +1,13 @@
+/* 全局重置：antd v5（CSS-in-JS）不注入 body 样式，深色主题需要自行铺底，
+   否则 body 默认 margin 与白底会在 Layout 四周露出白边（M2 宿主机实测）。 */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #141414;
+  color: rgba(255, 255, 255, 0.85);
+}
