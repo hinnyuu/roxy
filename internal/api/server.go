@@ -3,11 +3,12 @@ package api
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hinnyuu/roxy/internal/auth"
@@ -17,10 +18,8 @@ import (
 	"github.com/hinnyuu/roxy/internal/review"
 	"github.com/hinnyuu/roxy/internal/scanner"
 	"github.com/hinnyuu/roxy/internal/task"
+	"github.com/hinnyuu/roxy/web"
 )
-
-//go:embed ui/index.html
-var uiFS embed.FS
 
 const sessionCookie = "roxy_session"
 
@@ -64,15 +63,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerTasks(mux)
 	s.registerIndex(mux)
 
-	ui, _ := uiFS.ReadFile("ui/index.html")
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			writeError(w, http.StatusNotFound, "not found")
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(ui)
-	})
+	mux.Handle("GET /", spaHandler())
 
 	return withLogging(mux)
 }
@@ -191,6 +182,48 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 		ctx := context.WithValue(r.Context(), ctxKeyUsername, sess.Username)
 		next(w, r.WithContext(ctx))
 	}
+}
+
+// spaHandler 静态服务：真实 UI（-tags=web）走 SPA 模式——未命中的非 API 路径
+// 回退 index.html；占位页模式仅 "/" 返回 HTML。
+func spaHandler() http.Handler {
+	root := fs.FS(web.FS())
+	sub, err := fs.Sub(root, web.Root())
+	if err != nil {
+		panic(err)
+	}
+	if !web.HasRealUI() {
+		index, _ := fs.ReadFile(sub, "index.html")
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				writeError(w, http.StatusNotFound, "not found")
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(index)
+		})
+	}
+	fileServer := http.FileServer(http.FS(sub))
+	index, err := fs.ReadFile(sub, "index.html")
+	if err != nil {
+		panic(err)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			writeError(w, http.StatusNotFound, "not found")
+			return
+		}
+		p := strings.TrimPrefix(r.URL.Path, "/")
+		if p == "" {
+			p = "index.html"
+		}
+		if fi, serr := fs.Stat(sub, p); serr != nil || fi.IsDir() {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(index)
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

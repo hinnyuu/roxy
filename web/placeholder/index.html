@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>roxy</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #141414;
+        color: #e8e8e8;
+        font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      .card {
+        text-align: center;
+        padding: 48px 64px;
+        border: 1px solid #303030;
+        border-radius: 12px;
+        background: #1f1f1f;
+      }
+      h1 { margin: 0 0 8px; font-size: 28px; }
+      p { margin: 0; color: #999; }
+      code { color: #bbb; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>roxy</h1>
+      <p>API 已就绪；WebUI 未随本二进制构建。</p>
+      <p>生产二进制（<code>nix build</code>）内嵌完整界面；开发态请先 <code>npm --prefix web run build</code> 并以 <code>-tags=web</code> 构建。</p>
+    </div>
+  </body>
+</html>
