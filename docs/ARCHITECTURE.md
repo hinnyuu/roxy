@@ -151,6 +151,11 @@ library/
         ├── 某番剧 剧场版 某某 (2025).mkv → 相对软链接
         ├── 某番剧 剧场版 某某 (2025).nfo
         └── poster.jpg  fanart.jpg
+
+vault/                              # 版本仓库（D-039）：library 的兄弟目录，
+└── tv/                             # 不在任何媒体库扫描路径内
+    └── 某番剧 (2024)/Season 01/
+        └── S01E03 - 第03话 [BetaSub].mkv → 相对软链接（非主版本）
 ```
 
 ### 命名规则（机器惯例优先，自由度全部放 NFO）
@@ -159,7 +164,7 @@ library/
 |---|---|---|
 | 剧集目录 | `Season 00`、`Season 01`（两位数字） | 三家服务器解析器硬编码识别的模式 |
 | 剧集链接名 | `S{s:02}E{e:02} - {episode_title}` | resolver 先于 NFO 运行，文件名必须自解释；**文件名与 NFO 由同一决策生成，永远一致** |
-| 多版本后缀 | ` [{version}]`，仅当同集存在 ≥2 版本时全体版本加后缀 | 单版本保持整洁；**Jellyfin 不合并、Emby 合并**（M1 实测），后缀形态待 M1.5 探针定稿（D-038） |
+| 多版本后缀 | **vault 模式（默认）**：主版本无后缀，vault 内版本带 ` [{version}]`；tolerate 模式：全体版本带后缀 | Jellyfin 对剧集多版本无合并路径（M1/M1.5 实测），默认版本仓库策略（D-038/D-039） |
 | 多集合一文件 | `S01E01E02 - …`（M1 实测两家均识别为单一条目） | — |
 | 电影目录/文件 | `{标题} ({年份})` | Jellyfin 电影库惯例（M1 实测通过） |
 | 番外类文件（PV/CM/预告） | **只进 `Extras/` 子目录，禁止放剧集根目录** | Emby 会把根目录 `-trailer` 文件收为剧集（D-037 红线） |
@@ -176,8 +181,8 @@ library/
       **Emby 把根目录 `-trailer` 收为剧集（红线，D-037）**，`Extras/` 并入特别篇
 - [x] 零写入：只读挂载下两家均无写入
 - [x] 中文与特殊字符（Ω＆Δ「」~）：两家均正常显示
-- [ ] **同集多版本合并：Jellyfin 不合并（重复条目）、Emby 合并——D-038，
-      待 M1.5 探针定稿后缀形态**
+- [x] **同集多版本合并：Jellyfin 无任何合并路径（M1.5 三变体全部失败）——
+      版本仓库策略定稿（D-038/D-039）**
 - [ ] 字幕拾取与版本配套字幕——假文件无法触发，延至 M4
 - [ ] NFO uniqueid 于"识别"页不可见（非阻塞，见 D-036）
 
@@ -326,12 +331,28 @@ mapping: [{file, season, episode, slot_type(tv|special|movie|op|ed|pv|cm|extra),
 
 ### 9.1 版本（同集多压制版并存）
 
+实测事实：**Jellyfin 对剧集多版本无任何合并路径**（方括号与 " - " 分隔后缀
+均不合并，M1/M1.5 实测）；Emby 可合并。因此默认策略为**版本仓库**
+（D-038/D-039）：
+
+**vault 模式（默认，`policy.multi_version: vault`）**
+
+- 主版本 = 先到者，链接进 `library/`，**无后缀**（库内单一版本）；
+- 其余版本的软链接进 `vault/tv/{番剧} ({年份})/Season XX/`，带
+  ` [{version}]` 后缀；vault 是 library 的兄弟目录，天然在服务器扫描路径外；
+- 系列页"设为主版本" = 主版本与目标 vault 版本的纯链接互换（台账驱动）；
+- 字幕链接跟随其视频链接：主版本字幕在 library，vault 版本的配套字幕
+  跟随进 vault。
+
+**tolerate 模式（可配置）**：全体版本在库内并存、全部带 ` [{version}]`
+后缀（Jellyfin 呈重复条目、各自按 basename 配字幕；Emby 合并为多版本）。
+
+**版本识别与配对（两种模式通用）**
+
 - 解析阶段提取 `release_group`（首个中括号的原始字符串，归一化后作
   **version_key**）与文件名中的 CRC 哈希（动漫压制惯例）。
 - **配对不依赖语义分类**：视频与配套字幕共享相同文件名前缀/中括号，
   原始字符串相等即可配对——无论括号内是"字幕组&压制组"还是多组合作。
-- 链接名：单版本无后缀；同集出现 ≥2 版本时，**全部版本**改加
-  ` [{version}]` 后缀（台账驱动改名，纯链接操作）。
 - LLM 语义标注（谁是字幕组/谁是压制组）只服务显示层，结果缓存入库，
   错了不影响配对，可纠正。
 
@@ -364,6 +385,7 @@ VCB 系等惯例标签 → 标准后缀：`JPSC→zh-CN`、`JPTC→zh-TW`、`SC�
 | `ova` | `separate`（独立番剧目录）/ `season` / `s00` | `separate` |
 | `ncop_nced` | `s00` / `extras` / `skip` | `s00` |
 | `pv_cm` | `extras` / `skip` | `extras` |
+| `multi_version` | `vault`（版本仓库，D-039）/ `tolerate`（容忍重复条目） | `vault` |
 | `auto_approve_threshold` | 0–1 | `0.90` |
 
 ### 10.2 策略变更与返工
@@ -482,6 +504,7 @@ CREATE TABLE placements (
   episode_title            TEXT,
   version_key              TEXT,                   -- 归一化原始中括号
   version_label            TEXT,                   -- LLM/人工标注的显示标签
+  vault                    INTEGER NOT NULL DEFAULT 0,  -- 1=版本仓库内（D-039，迁移 0002 增补）
   subtitle_of_placement_id INTEGER REFERENCES placements(id),  -- 字幕→视频版本
   confidence               REAL,
   decision_source          TEXT NOT NULL CHECK (decision_source IN ('rule','llm','human')),
@@ -642,6 +665,7 @@ policy:                                 # 全局默认，可被系列级覆盖�
   ova: separate
   ncop_nced: s00
   pv_cm: extras
+  multi_version: vault                  # vault | tolerate（D-039）
   auto_approve_threshold: 0.90
 
 llm:

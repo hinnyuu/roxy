@@ -25,8 +25,36 @@ func TestMigrateIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("applied migrations: %v", err)
 	}
-	if len(applied) != 1 || applied[0] != "0001_initial.sql" {
-		t.Fatalf("expected exactly [0001_initial.sql], got %v", applied)
+	want := []string{"0001_initial.sql", "0002_add_vault_flag.sql"}
+	if len(applied) != len(want) {
+		t.Fatalf("applied migrations = %v, want %v", applied, want)
+	}
+	for i := range want {
+		if applied[i] != want[i] {
+			t.Fatalf("applied migrations = %v, want %v", applied, want)
+		}
+	}
+}
+
+func TestVaultColumnPresent(t *testing.T) {
+	ctx := context.Background()
+	d, err := Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer d.Close()
+	if err := Migrate(ctx, d); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	var n int
+	err = d.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM pragma_table_info('placements') WHERE name='vault'`).Scan(&n)
+	if err != nil {
+		t.Fatalf("pragma_table_info: %v", err)
+	}
+	if n != 1 {
+		t.Error("placements.vault column missing (migration 0002)")
 	}
 }
 

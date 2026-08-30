@@ -40,6 +40,7 @@ type PolicyConfig struct {
 	OVA                  string  `yaml:"ova"`
 	NCOPNCED             string  `yaml:"ncop_nced"`
 	PVCM                 string  `yaml:"pv_cm"`
+	MultiVersion         string  `yaml:"multi_version"`
 	AutoApproveThreshold float64 `yaml:"auto_approve_threshold"`
 }
 
@@ -119,6 +120,7 @@ func Default() *Config {
 			OVA:                  "separate",
 			NCOPNCED:             "s00",
 			PVCM:                 "extras",
+			MultiVersion:         "vault",
 			AutoApproveThreshold: 0.90,
 		},
 		Metadata: MetadataConfig{
@@ -189,6 +191,7 @@ func (c *Config) applyEnv() {
 	envStr("ROXY_MEDIA_LIBRARY_ROOT", &c.Media.LibraryRoot)
 	envStr("ROXY_MEDIA_LINK_MODE", &c.Media.LinkMode)
 	envFloat("ROXY_POLICY_AUTO_APPROVE_THRESHOLD", &c.Policy.AutoApproveThreshold)
+	envStr("ROXY_POLICY_MULTI_VERSION", &c.Policy.MultiVersion)
 	envInt("ROXY_SCANNER_RESCAN_INTERVAL", &c.Scanner.RescanInterval)
 }
 
@@ -198,6 +201,9 @@ func (c *Config) validate() error {
 	}
 	if c.Media.LinkMode != "relative" && c.Media.LinkMode != "absolute" {
 		return fmt.Errorf("media.link_mode: relative|absolute，得到 %q", c.Media.LinkMode)
+	}
+	if c.Policy.MultiVersion != "vault" && c.Policy.MultiVersion != "tolerate" {
+		return fmt.Errorf("policy.multi_version: vault|tolerate，得到 %q", c.Policy.MultiVersion)
 	}
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
 		return fmt.Errorf("server.port 非法: %d", c.Server.Port)

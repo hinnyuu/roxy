@@ -20,6 +20,9 @@ func TestDefaults(t *testing.T) {
 	if cfg.Policy.AutoApproveThreshold != 0.90 {
 		t.Errorf("default threshold = %v, want 0.90", cfg.Policy.AutoApproveThreshold)
 	}
+	if cfg.Policy.MultiVersion != "vault" {
+		t.Errorf("default multi_version = %q, want vault", cfg.Policy.MultiVersion)
+	}
 	if cfg.Metadata.Bangumi.UserAgent == "" {
 		t.Error("bangumi user_agent must not be empty")
 	}
@@ -69,5 +72,15 @@ func TestValidationRejectsBadValues(t *testing.T) {
 	}
 	if _, err := Load(path); err == nil {
 		t.Fatal("expected validation error for link_mode=hardlink")
+	}
+}
+
+func TestValidationRejectsBadMultiVersion(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("policy:\n  multi_version: merge\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected validation error for multi_version=merge")
 	}
 }
