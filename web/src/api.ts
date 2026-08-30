@@ -6,8 +6,13 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401 && !path.startsWith('/api/auth/login')) {
-    window.location.href = '/login';
+  // 401 处理：/api/auth/me 是挂载时的登录态探测（未登录属预期，交给 App 渲染
+  // 登录页，不得触发整页重定向，否则与 useEffect 形成重载风暴）；
+  // 其余端点的 401 视为会话过期 → 跳登录页（已在 /login 时不再跳转）。
+  if (res.status === 401 && !path.startsWith('/api/auth/login') && !path.startsWith('/api/auth/me')) {
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
     throw new Error('未登录');
   }
   const text = await res.text();

@@ -16,8 +16,8 @@ export default function Login({ onLogin }: { onLogin: (me: Me) => void }) {
             setLoading(true);
             setError('');
             try {
-              const me = await api.login(v.username, v.password);
-              onLogin(me);
+              await api.login(v.username, v.password);
+              onLogin(await api.me());
             } catch (e) {
               setError((e as Error).message);
             } finally {
