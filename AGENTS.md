@@ -13,8 +13,7 @@
    确认当前里程碑与下一步动作。
 2. `docs/ARCHITECTURE.md` 较长（700+ 行），小任务按目录**按需读相关章节**；
    涉及设计决策变更时须通读 `docs/DECISIONS.md` 相关条目。
-3. 写代码前确认所在里程碑的前置已完成（M0 之前仓库只有文档，
-   下文命令尚不可用）。
+3. 写代码前确认所在里程碑的前置已完成（见 ROADMAP"当前进度"节的前置检查）。
 
 ---
 
@@ -33,7 +32,7 @@ roxy 是面向 Jellyfin/Emby/Kodi 的动漫媒体库整理器：LLM 智能识别
 
 ## 常用命令
 
-> 以下命令自 **M0 完成后**生效；M0 之前仓库只有文档，尚无可构建内容。
+> 以下命令自 M0 完成后生效（当前可用）。
 
 ```bash
 nix develop                    # 进入开发环境（一切开发操作的入口）
@@ -47,6 +46,10 @@ nix build .#image              # OCI 镜像（dockerTools，无需 daemon）
 npm --prefix web ci
 npm --prefix web run build
 npm --prefix web run lint
+npm --prefix web run dev       # Vite dev server（代理 /api → 127.0.0.1:8080，需先起 roxy serve）
+
+# 本地构建内嵌真实 UI 的二进制（生产一律 nix build，此仅开发调试用）
+npm --prefix web run build && go build -tags=web -o bin/roxy ./cmd/roxy
 ```
 
 若上述命令随项目演进发生变化，**必须同步更新本文件**。
@@ -78,7 +81,8 @@ npm --prefix web run lint
 - 提交信息用 Conventional Commits：`type(scope): subject`，默认分支 `main`。
   常用 type：`docs` / `feat` / `fix` / `chore` / `ci` / `test` / `refactor`；
   常用 scope：`parser` / `matcher` / `organizer` / `ledger` / `review` / `llm` /
-  `metadata` / `scanner` / `api` / `web` / `db` / `nix` / `docs`。
+  `metadata` / `scanner` / `api` / `web` / `db` / `nix` / `docs` / `domain` /
+  `task` / `config` / `auth` / `deployments`。
 - **文档先行**：任何改变设计决策的变更，先在 `docs/DECISIONS.md` 追加/修订 ADR，
   再改代码。代码与文档冲突时，以"先修文档再改代码"的顺序解决。
 - **schema 唯一事实源是迁移文件**：`docs/ARCHITECTURE.md` §12 是设计基准，

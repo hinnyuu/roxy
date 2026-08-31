@@ -1,8 +1,9 @@
 # roxy 架构文档
 
-> 状态：**M1/M1.5 实测冻结版**。命名规范主体已冻结（D-036），版本仓库机制定稿
-> （D-038/D-039）；唯一剩余的未实测例外是**字幕拾取行为**（待 M4 真实媒体实测）。
-> 变更本文档须同步更新 `docs/DECISIONS.md`。
+> 状态：**M2/M2.5 交付版**。命名规范主体冻结（D-036），版本仓库机制定稿
+> （D-038/D-039），规则档匹配经 D-042/D-043 加固；唯一剩余的未实测例外是
+> **字幕拾取行为**（待 M4 真实媒体实测）。变更本文档须同步更新
+> `docs/DECISIONS.md`。
 
 ---
 
@@ -251,6 +252,11 @@ new → parsed → proposed(匹配+置信度分解)
    按生效策略（手动指定 > 系列覆盖 > 全局策略）生成路径 → 原子创建 → 记台账
 ```
 
+> 实现进度（M2.5）：步骤 1 的 a/b 已实现（含 Bangumi 在线兜底；AniList/TMDB
+> 槽位排 M3），d/e 的 LLM 档排 M3；步骤 2 的 a/b/d 已实现，c 的 LLM 档排 M3。
+> 步骤 3 当前权重实现：标题 0.5 + 证据 0.3 + 规则 0.2（M2 规则档无 LLM 项；
+> M3 并入 LLM 自报置信度时须重配权重并回填本节）。
+
 ## 7. LLM 设计
 
 ### 7.1 Provider 抽象
@@ -429,7 +435,8 @@ WebUI 的 LLM 日志页是"给 LLM 提建议"的落点（从某次失败调用�
 
 ## 12. SQLite Schema（全量）
 
-> 以迁移文件形式落地（M0）。此处为设计基准。
+> 以迁移文件形式落地（0001 M0 全量；0002 M1.5 vault；0003 M2 episode_end）。
+> 此处为设计基准。
 
 ```sql
 -- 认证
@@ -728,9 +735,13 @@ scanner:
 
 前缀 `/api`；除 login 外均需会话认证；`/api/events` 为 SSE。
 
-**实现状态**：M0 已实现认证四端点（login/logout/me/credentials）与
-`/api/health`；其余为规划目标，按 ROADMAP 里程碑逐步交付（实现以
-`internal/api/` 代码为准）。
+**实现状态**（实现以 `internal/api/` 代码为准）：
+- M0：认证四端点（login/logout/me/credentials）+ `/api/health`。
+- M2：sources CRUD/scan/files、review 列表/批准/驳回、tasks 列表/详情/取消、
+  index 状态/刷新。
+- 未实现（规划）：SSE `/api/events`（排 M3，M2 以轮询过渡）；review 的
+  rework/assign（M3）；series/placements/ledger/feedback/llm-logs/settings/
+  dashboard（M3–M5）。
 
 ```
 认证
